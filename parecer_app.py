@@ -13,6 +13,7 @@ from modules import (
     pipeline_mod,
     importador,
     financeiro,
+    hunting,
 )
 
 st.set_page_config(page_title="GAC - Gerenciador Alvim Consultoria",
@@ -42,6 +43,7 @@ elif modulo == "Recrutamento & Seleção":
         "📁 Histórico",
         "📌 Pipeline",
         "📥 Importar antigos",
+         "🔎 Hunting / LinkedIn",
     ])
     with sub[0]:
         candidatos.run()
@@ -55,6 +57,8 @@ elif modulo == "Recrutamento & Seleção":
         pipeline_mod.run()
     with sub[5]:
         importador.run()
+    with sub[6]:
+        hunting.run()
 
 elif modulo == "Sistemas / Acessos":
     acessos.run()
