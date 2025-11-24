@@ -25,11 +25,23 @@ def run():
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        cargo_busca = st.text_input("Cargo", placeholder="Ex.: Analista Financeiro")
+        cargo_busca = st.text_input(
+            "Cargo",
+            placeholder="Ex.: Analista Financeiro",
+            key="hunt_cargo_busca",
+        )
     with col2:
-        local_busca = st.text_input("Localidade", placeholder="Ex.: Curitiba, Paraná")
+        local_busca = st.text_input(
+            "Localidade",
+            placeholder="Ex.: Curitiba, Paraná",
+            key="hunt_local_busca",
+        )
     with col3:
-        extras_busca = st.text_input("Palavras-chave extras", placeholder="Ex.: Senior Sapiens, HCM")
+        extras_busca = st.text_input(
+            "Palavras-chave extras",
+            placeholder="Ex.: Senior Sapiens, HCM",
+            key="hunt_extras_busca",
+        )
 
     termos = " ".join([t for t in [cargo_busca, local_busca, extras_busca] if t.strip()])
     if termos:
@@ -58,13 +70,30 @@ def run():
                 "Desenvolvedor (Flutter / Mobile)",
                 "Desenvolvedor (Frontend / Vue.js)",
             ],
+            key="hunt_tipo_vaga",
         )
     with colm2:
-        seu_nome = st.text_input("Seu nome (recrutador)", value="Rikardo")
-        nome_consultoria = st.text_input("Nome da consultoria", value="Alvim Consultoria")
+        seu_nome = st.text_input(
+            "Seu nome (recrutador)",
+            value="Rikardo",
+            key="hunt_seu_nome",
+        )
+        nome_consultoria = st.text_input(
+            "Nome da consultoria",
+            value="Alvim Consultoria",
+            key="hunt_nome_consultoria",
+        )
 
-    nome_candidato_msg = st.text_input("Nome do candidato (para personalizar a mensagem)", value="")
-    titulo_vaga_msg = st.text_input("Título da vaga", placeholder="Ex.: Analista Administrativo Financeiro")
+    nome_candidato_msg = st.text_input(
+        "Nome do candidato (para personalizar a mensagem)",
+        value="",
+        key="hunt_nome_candidato_msg",
+    )
+    titulo_vaga_msg = st.text_input(
+        "Título da vaga",
+        placeholder="Ex.: Analista Administrativo Financeiro",
+        key="hunt_titulo_vaga_msg",
+    )
 
     if tipo_vaga == "Analista Administrativo/Financeiro":
         base_msg = f"""
@@ -121,7 +150,12 @@ Se preferir, pode me responder por aqui mesmo ou compartilhar um telefone para c
     msg_final = base_msg.replace("{nome_candidato}", nome_candidato_msg or "tudo bem")
 
     st.markdown("**Mensagem sugerida para copiar e colar no LinkedIn:**")
-    st.text_area("Mensagem de abordagem", value=msg_final, height=220, key="hunting_msg")
+    st.text_area(
+        "Mensagem de abordagem",
+        value=msg_final,
+        height=220,
+        key="hunt_msg_abordagem",
+    )
 
     st.caption("💡 Dica: personalize sempre o início da mensagem com algo específico do perfil da pessoa.")
 
@@ -139,17 +173,40 @@ Se preferir, pode me responder por aqui mesmo ou compartilhar um telefone para c
 
     colc1, colc2 = st.columns(2)
     with colc1:
-        nome_cad = st.text_input("Nome completo do candidato")
-        cidade_cad = st.text_input("Cidade / UF")
-        telefone_cad = st.text_input("Telefone (com DDD)", placeholder="Opcional")
-        idade_cad = st.text_input("Idade (opcional)")
+        nome_cad = st.text_input(
+            "Nome completo do candidato",
+            key="hunt_nome_cad",
+        )
+        cidade_cad = st.text_input(
+            "Cidade / UF",
+            key="hunt_cidade_cad",
+        )
+        telefone_cad = st.text_input(
+            "Telefone (com DDD)",
+            placeholder="Opcional",
+            key="hunt_telefone_cad",
+        )
+        idade_cad = st.text_input(
+            "Idade (opcional)",
+            key="hunt_idade_cad",
+        )
     with colc2:
-        cargo_cad = st.text_input("Cargo pretendido / Perfil principal")
-        linkedin_cad = st.text_input("URL do LinkedIn", placeholder="https://www.linkedin.com/in/...")
+        cargo_cad = st.text_input(
+            "Cargo pretendido / Perfil principal",
+            key="hunt_cargo_cad",
+        )
+        linkedin_cad = st.text_input(
+            "URL do LinkedIn",
+            placeholder="https://www.linkedin.com/in/...",
+            key="hunt_linkedin_cad",
+        )
+        data_cad = st.date_input(
+            "Data do cadastro",
+            value=datetime.today(),
+            key="hunt_data_cad",
+        ).strftime("%Y-%m-%d")
 
-        data_cad = st.date_input("Data do cadastro", value=datetime.today()).strftime("%Y-%m-%d")
-
-    if st.button("💾 Cadastrar candidato a partir do LinkedIn"):
+    if st.button("💾 Cadastrar candidato a partir do LinkedIn", key="hunt_btn_salvar_cand"):
         if not nome_cad.strip():
             st.error("Informe ao menos o nome do candidato.")
         else:
@@ -170,3 +227,4 @@ Se preferir, pode me responder por aqui mesmo ou compartilhar um telefone para c
                 df.to_csv(LOG_CAND, sep=";", index=False, encoding="utf-8")
 
             st.success(f"Candidato cadastrado com ID {novo_id}. Você pode complementar na aba Candidatos.")
+
