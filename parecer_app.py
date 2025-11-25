@@ -31,111 +31,163 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS GLOBAL – ESTILO iOS / GLASSMORPHISM
+# CSS GLOBAL – ESTILO iOS 18 / GLASSMORPHISM
 # ============================================================
 
 GLOBAL_CSS = """
 <style>
 
+/* Fundo geral com gradiente estilo iOS */
 html, body, [data-testid="stAppViewContainer"] {
     background: radial-gradient(circle at 20% 20%, #e3e9f8 0%, #f5f7fa 50%, #e1e7f0 100%) !important;
 }
 
-/* REMOVE FUNDO PRETO DO STREAMLIT */
+/* Remove qualquer fundo sólido do container root */
 [data-testid="stAppViewContainer"] {
     background-color: transparent !important;
 }
 
-/* CONTAINER PRINCIPAL EM GLASS */
+/* Container principal como card de vidro */
 .main .block-container {
-    background: rgba(255,255,255,0.50);
-    backdrop-filter: blur(18px) saturate(180%);
-    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     border-radius: 24px;
     padding: 2rem 3rem;
-    margin-top: 2rem;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+    margin-top: 1.5rem;
+    margin-bottom: 2.5rem;
+    box-shadow: 0 10px 40px rgba(15,23,42,0.18);
 }
 
-/* SIDEBAR GLASS REAL */
+/* SIDEBAR em glass */
 section[data-testid="stSidebar"] {
-    background: rgba(255,255,255,0.25) !important;
-    backdrop-filter: blur(22px) saturate(160%) !important;
-    -webkit-backdrop-filter: blur(22px) saturate(160%) !important;
-    border-right: 1px solid rgba(255,255,255,0.45);
+    background: rgba(15,23,42,0.35) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border-right: 1px solid rgba(148,163,184,0.4);
+}
+section[data-testid="stSidebar"] * {
+    color: #e5e7eb !important;
 }
 
-/* BOTÕES iOS */
-.stButton > button {
-    background: rgba(255,255,255,0.35);
-    backdrop-filter: blur(14px);
-    border-radius: 14px;
-    padding: 0.6rem 1.2rem;
-    color: #1e293b;
-    border: 1px solid rgba(255,255,255,0.45);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    transition: all 0.25s ease;
+/* RADIO da sidebar mais bonitinho */
+section[data-testid="stSidebar"] .stRadio label {
     font-weight: 600;
 }
+
+/* BOTÕES estilo iOS, com animação */
+.stButton > button {
+    background: rgba(255,255,255,0.65);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-radius: 14px;
+    padding: 0.55rem 1.25rem;
+    color: #111827 !important;
+    border: 1px solid rgba(209,213,219,0.8);
+    box-shadow: 0 4px 14px rgba(15,23,42,0.18);
+    transition: all 0.22s ease-out;
+    font-weight: 600;
+    font-size: 0.92rem;
+}
 .stButton > button:hover {
-    background: rgba(255,255,255,0.55);
-    transform: scale(1.03) translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    background: rgba(255,255,255,0.9);
+    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 10px 26px rgba(15,23,42,0.24);
 }
 
-/* INPUTS GLASS */
-input, textarea, select, div[data-baseweb="input"] > div, div[data-baseweb="select"] > div {
-    background: rgba(255,255,255,0.45) !important;
+/* INPUTS / SELECTS – caixas claras com texto escuro (iOS) */
+input, textarea, select {
+    color: #0f172a !important;
+}
+
+/* wrappers dos inputs do Streamlit (BaseWeb) */
+div[data-baseweb="input"] > div,
+div[data-baseweb="select"] > div,
+div[data-baseweb="textarea"] > div {
+    background: rgba(255,255,255,0.85) !important;
     backdrop-filter: blur(14px) saturate(180%) !important;
-    border-radius: 12px !important;
-    border: 1px solid rgba(255,255,255,0.55) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(148,163,184,0.8) !important;
+    box-shadow: 0 2px 7px rgba(15,23,42,0.05);
 }
 
-/* DATAFRAME EM CARD GLASS */
+/* textarea nativo */
+textarea {
+    background: rgba(255,255,255,0.9) !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(148,163,184,0.8) !important;
+}
+
+/* Dropdown das listas (selectbox options) */
+div[role="listbox"] {
+    background: rgba(255,255,255,0.96) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border-radius: 14px !important;
+    border: 1px solid rgba(148,163,184,0.7) !important;
+    box-shadow: 0 8px 22px rgba(15,23,42,0.20);
+}
+div[role="option"] {
+    color: #0f172a !important;
+}
+
+/* DataFrame: card claro, texto escuro */
 div[data-testid="stDataFrame"] {
-    background: rgba(255,255,255,0.45) !important;
-    backdrop-filter: blur(12px);
+    background: rgba(255,255,255,0.9) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border-radius: 18px !important;
-    padding: 0.5rem;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    padding: 0.45rem;
+    box-shadow: 0 8px 24px rgba(15,23,42,0.18);
 }
 
-/* TABS iOS */
+/* Tenta clarear as células internas do grid */
+div[data-testid="stDataFrame"] * {
+    color: #0f172a !important;
+}
+div[data-testid="stDataFrame"] .ag-root-wrapper,
+div[data-testid="stDataFrame"] .ag-header,
+div[data-testid="stDataFrame"] .ag-row {
+    background-color: rgba(248,250,252,0.98) !important;
+}
+
+/* Títulos */
+h1, h2, h3 {
+    color: #0f172a;
+    letter-spacing: -0.03em;
+}
+
+/* Tabs estilo iOS (pill) */
 div[data-baseweb="tab-list"] {
-    background: rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.4);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-radius: 999px;
-    padding: 5px;
-    backdrop-filter: blur(10px);
+    padding: 4px;
 }
 button[role="tab"] {
     border-radius: 999px !important;
-    padding: 6px 18px !important;
+    padding: 0.35rem 0.95rem !important;
     color: #475569 !important;
 }
 button[role="tab"][aria-selected="true"] {
-    background: rgba(255,255,255,0.55) !important;
-    color: #1e293b !important;
+    background: rgba(255,255,255,0.98) !important;
+    color: #111827 !important;
     font-weight: 700 !important;
-    border: 1px solid rgba(255,255,255,0.65);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.10);
+    box-shadow: 0 4px 12px rgba(15,23,42,0.18);
 }
 
-/* ALERTAS */
+/* Alertas arredondados em vidro */
 div[data-testid="stAlert"] {
-    background: rgba(255,255,255,0.55) !important;
-    backdrop-filter: blur(10px);
     border-radius: 16px;
+    background: rgba(255,255,255,0.9) !important;
+    backdrop-filter: blur(10px);
 }
 
-/* TÍTULOS */
-h1, h2, h3, h4 {
-    color: #1e293b;
-    letter-spacing: -0.3px;
-}
-
-/* LABELS */
-label, span, p, div {
-    color: #334155 !important;
+/* Pequeno ajuste nos parágrafos */
+.stMarkdown p {
+    color: #1f2933;
 }
 
 </style>
@@ -147,7 +199,7 @@ st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 # AUTENTICAÇÃO
 # ============================================================
 
-# Se não estiver logado OU precisa trocar senha, fica no fluxo do auth
+# Se não estiver logado ou precisa trocar senha, fica no fluxo do auth
 if (
     "user" not in st.session_state
     or st.session_state["user"] is None
@@ -157,9 +209,7 @@ if (
     st.stop()
 
 # Info do usuário logado no sidebar
-st.sidebar.markdown(
-    f"👤 Usuário: **{st.session_state['user']['username']}**"
-)
+st.sidebar.markdown(f"👤 Usuário: **{st.session_state['user']['username']}**")
 if st.sidebar.button("Sair", use_container_width=True):
     st.session_state.clear()
     st.rerun()
@@ -233,9 +283,3 @@ elif modulo == "Financeiro":
 elif modulo == "Admin - Usuários":
     usuarios.run()
 
-
-elif modulo == "Financeiro":
-    financeiro.run()
-
-elif modulo == "Admin - Usuários":
-    usuarios.run()
