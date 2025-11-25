@@ -37,7 +37,7 @@ st.set_page_config(
 GLOBAL_CSS = """
 <style>
 
-/* FUNDO GERAL – LIQUID GLASS APPLE STYLE */
+/* FUNDO GERAL – LIQUID GLASS */
 html, body, [data-testid="stAppViewContainer"] {
     background:
         radial-gradient(circle at 0% 0%, #9bb5ff 0, transparent 45%),
@@ -45,12 +45,12 @@ html, body, [data-testid="stAppViewContainer"] {
         radial-gradient(circle at 50% 100%, #a5f3fc 0, #e5f0ff 55%);
 }
 
-/* container raiz sem fundo */
+/* container raiz sem fundo sólido extra */
 [data-testid="stAppViewContainer"] {
     background-color: transparent !important;
 }
 
-/* CONTEÚDO PRINCIPAL – CARD LIQUID GLASS */
+/* CONTEÚDO PRINCIPAL – CARD LIQUID GLASS CLARO */
 .main .block-container {
     background: rgba(255,255,255,0.86);
     backdrop-filter: blur(22px) saturate(170%);
@@ -88,7 +88,7 @@ h1, h2, h3, h4 {
     color: #1f2933 !important;
 }
 
-/* BOTÕES – CAPSULA iOS COM AZUL #0A84FF */
+/* BOTÕES – CAPSULA iOS */
 .stButton > button {
     background: linear-gradient(135deg, #ffffff, #e0ebff);
     color: #0f172a !important;
@@ -107,7 +107,11 @@ h1, h2, h3, h4 {
     border-color: rgba(59,130,246,0.8);
 }
 
-/* CAMPOS – INPUT / TEXTAREA / SELECT – ESTILO CAMPO iOS */
+/* =========================
+   INPUTS / TEXTAREAS / SELECTS
+   ========================= */
+
+/* Caixas de texto iOS */
 .stTextInput input,
 .stTextArea textarea {
     background-color: #f9fafb !important;
@@ -119,7 +123,7 @@ h1, h2, h3, h4 {
     padding-bottom: 0.5rem !important;
 }
 
-/* remove bordas/caixa preta do wrapper baseweb */
+/* remove “caixa preta” do wrapper baseweb */
 div[data-baseweb="input"] > div,
 div[data-baseweb="textarea"] > div {
     background-color: transparent !important;
@@ -149,18 +153,34 @@ input, textarea, select {
     color: #0f172a !important;
 }
 
-/* DROPDOWN DAS LISTAS (options) */
-div[role="listbox"] {
-    background: #ffffff !important;
-    border-radius: 14px !important;
-    border: 1px solid #cbd5e1 !important;
-    box-shadow: 0 14px 30px rgba(15,23,42,0.35);
+/* =========================
+   LISTAS / TABELAS – PADRÃO ÚNICO
+   ========================= */
+
+/* Tabelas HTML (ex.: Lista de candidatos custom) */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #ffffffee !important;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 10px 28px rgba(15,23,42,0.22);
 }
-div[role="option"] {
+table th, table td {
+    padding: 10px 14px;
+    font-size: 0.90rem;
     color: #0f172a !important;
+    border-bottom: 1px solid #e5e7eb;
+}
+table th {
+    background: #f1f5f9;
+    font-weight: 700;
+}
+table tr:last-child td {
+    border-bottom: none;
 }
 
-/* TABELAS / DATAFRAMES – LIGHT THEME */
+/* DataFrames (AG-Grid) – tema claro padrão */
 div[data-testid="stDataFrame"] {
     background: #ffffff !important;
     border-radius: 18px !important;
@@ -168,23 +188,37 @@ div[data-testid="stDataFrame"] {
     box-shadow: 0 10px 28px rgba(15,23,42,0.25);
 }
 
-/* força claro dentro da AG-Grid */
+/* força claro dentro da grade */
 div[data-testid="stDataFrame"] .ag-root-wrapper,
 div[data-testid="stDataFrame"] .ag-root,
 div[data-testid="stDataFrame"] .ag-header,
-div[data-testid="stDataFrame"] .ag-row {
+div[data-testid="stDataFrame"] .ag-row,
+div[data-testid="stDataFrame"] .ag-cell,
+div[data-testid="stDataFrame"] .ag-header-cell {
     background-color: #f9fafb !important;
     color: #0f172a !important;
+    border-color: #e5e7eb !important;
 }
+
+/* ajusta variáveis de tema do AG-Grid (caso use) */
+div[data-testid="stDataFrame"] .ag-root-wrapper {
+    --ag-background-color: #f9fafb !important;
+    --ag-odd-row-background-color: #f3f4f6 !important;
+    --ag-header-background-color: #e5e7eb !important;
+    --ag-foreground-color: #0f172a !important;
+    --ag-data-color: #0f172a !important;
+    --ag-border-color: #e5e7eb !important;
+}
+
+/* header um pouco mais forte */
 div[data-testid="stDataFrame"] .ag-header-cell-label {
     color: #0f172a !important;
     font-weight: 600;
 }
-div[data-testid="stDataFrame"] .ag-cell {
-    color: #0f172a !important;
-}
 
-/* TABS EM FORMATO PILL */
+/* =========================
+   TABS (modo iOS)
+   ========================= */
 div[data-baseweb="tab-list"] {
     background: rgba(226,232,240,0.9);
     border-radius: 999px;
@@ -202,15 +236,10 @@ button[role="tab"][aria-selected="true"] {
     box-shadow: 0 4px 14px rgba(15,23,42,0.25);
 }
 
-/* ALERTAS MAIS SUAVES */
+/* Alertas */
 div[data-testid="stAlert"] {
     border-radius: 14px;
     background: #f9fafb !important;
-}
-
-/* radio sidebar */
-section[data-testid="stSidebar"] .stRadio label {
-    font-weight: 600;
 }
 
 </style>
