@@ -25,7 +25,6 @@ def limpar_texto(texto: str) -> str:
     if not texto:
         return ""
 
-    # Normaliza unicode
     texto = unicodedata.normalize("NFKC", str(texto))
 
     limpo = []
@@ -35,22 +34,22 @@ def limpar_texto(texto: str) -> str:
             limpo.append(ch)
             continue
 
-        # Remove caracteres de controle (categoria C do Unicode)
         cat = unicodedata.category(ch)
+        # Remove caracteres de controle (categoria C)
         if cat and cat[0] == "C":
             continue
 
-        # ASCII "normal"
+        # ASCII normal
         if ord(ch) < 128:
             limpo.append(ch)
             continue
 
-        # Letras acentuadas comuns em PT-BR
+        # Letras comuns PT-BR
         if ch in "áàãâéêíóôõúçÁÀÃÂÉÊÍÓÔÕÚÇ":
             limpo.append(ch)
             continue
 
-        # Para outros caracteres esquisitos (tipo Ɵ, etc.), tenta decompôr
+        # Para outros, tenta decompor e ficar só com base ASCII
         decomp = unicodedata.normalize("NFKD", ch)
         base = "".join(c for c in decomp if ord(c) < 128 and c.isprintable())
         limpo.append(base)
@@ -60,15 +59,13 @@ def limpar_texto(texto: str) -> str:
 
 def copiar_para_clipboard(texto: str):
     """
-    Copia texto para a área de transferência usando JavaScript.
-    O texto já deve vir limpo.
+    Copia texto para a área de transferência via JavaScript.
     """
     js = f"""
     <script>
-    navigator.clipboard.writeText({json.dumps(texto)});
+        navigator.clipboard.writeText({json.dumps(texto)});
     </script>
     """
-    # Altura 0 para não aparecer nada visualmente
     components.html(js, height=0)
 
 
@@ -234,6 +231,13 @@ Se tiver interesse, me envie seu *currículo atualizado* ou uma mensagem aqui me
                 copiar_para_clipboard(texto_whats)
                 st.info("Texto para WhatsApp copiado! É só colar na conversa ou status.")
 
+        # Visualização opcional (caso queira conferir ou copiar manualmente)
+        with st.expander("Visualizar textos gerados (opcional)"):
+            st.markdown("**LinkedIn:**")
+            st.code(texto_linkedin, language=None)
+            st.markdown("**WhatsApp:**")
+            st.code(texto_whats, language=None)
+
     # ============================
     # VÍNCULO VAGA x CANDIDATOS
     # ============================
@@ -315,4 +319,3 @@ Se tiver interesse, me envie seu *currículo atualizado* ou uma mensagem aqui me
             how="left",
         )
         st.dataframe(df_show, use_container_width=True)
-
