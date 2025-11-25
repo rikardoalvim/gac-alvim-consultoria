@@ -127,12 +127,12 @@ def inject_global_css() -> None:
             gap: 0.5rem;
         }
 
-        /* Botões GLASS – todos (principal + sub) */
+        /* Botões GLASS – base (submenus + botões normais) */
         .stButton>button {
             border-radius: 999px !important;
             border: 1px solid rgba(255, 255, 255, 0.8) !important;
-            padding: 0.40rem 1.25rem !important;
-            font-size: 0.90rem !important;
+            padding: 0.45rem 1.35rem !important;
+            font-size: 0.92rem !important;
             font-weight: 600 !important;
             color: #111827 !important;
             background: radial-gradient(circle at 0 0,
@@ -156,6 +156,12 @@ def inject_global_css() -> None:
         .stButton>button:active {
             transform: translateY(1px) scale(0.99);
             box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35) !important;
+        }
+
+        /* Botões do MENU PRINCIPAL um pouco menores */
+        .main-nav-wrapper .stButton>button {
+            font-size: 0.86rem !important;
+            padding: 0.35rem 1.0rem !important;
         }
 
         /* Botão ativo (nav) – destaque leve rosa */
@@ -233,9 +239,32 @@ def inject_global_css() -> None:
             color: #111827 !important;
         }
 
-        /* Inputs arredondados */
-        input, textarea {
+        /* Inputs / textareas claros (principalmente para o Parecer) */
+        textarea,
+        input[type="text"],
+        input[type="number"],
+        input[type="password"],
+        input[type="email"] {
+            background: rgba(255, 255, 255, 0.98) !important;
+            color: #0f172a !important;
             border-radius: 18px !important;
+            border: 1px solid rgba(148, 163, 184, 0.7) !important;
+        }
+
+        textarea:focus,
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="password"]:focus,
+        input[type="email"]:focus {
+            outline: none !important;
+            border-color: rgba(59, 130, 246, 0.9) !important;
+            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5);
+        }
+
+        /* Labels mais visíveis */
+        label {
+            color: #111827 !important;
+            font-weight: 600 !important;
         }
         </style>
         """,
@@ -295,7 +324,7 @@ def init_nav_state() -> None:
 
 
 # ---------------------------------------------------------
-# NAV PRINCIPAL (Dashboard, Cadastros, R&S, Sistemas, Financeiro)
+# NAV PRINCIPAL (Dashboard, Cadastros, R&S, Sistemas, Financeiro + Sair)
 # ---------------------------------------------------------
 def render_main_nav() -> str:
     main = st.session_state.get("main_module", "rs")
@@ -309,12 +338,13 @@ def render_main_nav() -> str:
     ]
 
     st.markdown('<div class="main-nav-wrapper"><div class="main-nav-row">', unsafe_allow_html=True)
-    cols = st.columns(len(items))
+    cols = st.columns(len(items) + 1)  # +1 para o botão Sair fixo à direita
 
-    for col, (key, label) in zip(cols, items):
+    # Botões principais
+    for idx, (key, label) in enumerate(items):
         active = (key == main)
         btn_key = f"main_{key}"
-        with col:
+        with cols[idx]:
             st.markdown(
                 f'<div class="stButton{" nav-active" if active else ""}>',
                 unsafe_allow_html=True,
@@ -330,6 +360,15 @@ def render_main_nav() -> str:
                 else:
                     st.session_state["sub_module"] = ""
                 main = key
+
+    # Botão SAIR fixo na barra (sempre visível no topo)
+    with cols[-1]:
+        if st.button("⏏ Sair", key="btn_logout_main", use_container_width=True):
+            keys = list(st.session_state.keys())
+            for k in keys:
+                if k != "_is_running_with_streamlit":
+                    del st.session_state[k]
+            st.experimental_rerun()
 
     st.markdown("</div></div>", unsafe_allow_html=True)
     return main
@@ -350,9 +389,9 @@ def render_sub_nav(main_module: str) -> str:
             st.session_state["sub_module"] = cur_sub
 
         st.markdown('<div class="glass-actions-row">', unsafe_allow_html=True)
-        cols = st.columns(len(subs) + 1)  # +1 para botão de sair
+        cols = st.columns(len(subs))
 
-        # botões dos submódulos
+        # botões dos submódulos (todos com mesmo tamanho)
         for i, (sid, label) in enumerate(subs):
             with cols[i]:
                 active = (sid == cur_sub)
@@ -367,28 +406,9 @@ def render_sub_nav(main_module: str) -> str:
                     st.session_state["sub_module"] = sid
                     cur_sub = sid
 
-        # botão de sair
-        with cols[-1]:
-            if st.button("⏏ Sair", key="btn_logout", use_container_width=True):
-                keys = list(st.session_state.keys())
-                for k in keys:
-                    if k != "_is_running_with_streamlit":
-                        del st.session_state[k]
-                st.experimental_rerun()
-
         st.markdown("</div>", unsafe_allow_html=True)
     else:
-        # sem submenus, mas ainda mostra botão de sair
-        st.markdown('<div class="glass-actions-row">', unsafe_allow_html=True)
-        col = st.columns(1)[0]
-        with col:
-            if st.button("⏏ Sair", key="btn_logout_nosub", use_container_width=True):
-                keys = list(st.session_state.keys())
-                for k in keys:
-                    if k != "_is_running_with_streamlit":
-                        del st.session_state[k]
-                st.experimental_rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
+        cur_sub = ""
 
     return cur_sub
 
@@ -516,6 +536,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 
 
