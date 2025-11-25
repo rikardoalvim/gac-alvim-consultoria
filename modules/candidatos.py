@@ -23,15 +23,20 @@ def run():
 
     col1, col2 = st.columns(2)
     with col1:
-        nome = st.text_input("Nome completo do candidato")
-        idade = st.text_input("Idade")
-        telefone = st.text_input("Telefone (com DDD)")
+        nome = st.text_input("Nome completo do candidato", key="nome_novo")
+        idade = st.text_input("Idade", key="idade_novo")
+        telefone = st.text_input("Telefone (com DDD)", key="telefone_novo")
     with col2:
-        cidade = st.text_input("Cidade / UF")
-        cargo_pret = st.text_input("Cargo pretendido")
-        data_cad = st.date_input("Data do cadastro", value=datetime.today()).strftime("%Y-%m-%d")
+        cidade = st.text_input("Cidade / UF", key="cidade_novo")
+        # 👇 KEY EXPLÍCITA PARA NÃO CONFLITAR COM O CAMPO DE EDIÇÃO
+        cargo_pret = st.text_input("Cargo pretendido", key="cargo_pret_novo")
+        data_cad = st.date_input(
+            "Data do cadastro",
+            value=datetime.today(),
+            key="data_cad_novo"
+        ).strftime("%Y-%m-%d")
 
-    if st.button("💾 Salvar candidato"):
+    if st.button("💾 Salvar candidato", key="btn_salvar_novo"):
         if not nome.strip():
             st.error("Informe o nome do candidato.")
         else:
@@ -80,14 +85,27 @@ def run():
 
     colf1, colf2 = st.columns(2)
     with colf1:
-        nome_f = st.text_input("Nome", value=row["nome"])
-        idade_f = st.text_input("Idade", value=str(row["idade"]))
-        tel_f = st.text_input("Telefone", value=row["telefone"])
-        cidade_f = st.text_input("Cidade", value=row["cidade"])
+        nome_f = st.text_input("Nome", value=row["nome"], key=f"nome_{id_sel}")
+        idade_f = st.text_input("Idade", value=str(row["idade"]), key=f"idade_{id_sel}")
+        tel_f = st.text_input("Telefone", value=row["telefone"], key=f"tel_{id_sel}")
+        cidade_f = st.text_input("Cidade", value=row["cidade"], key=f"cidade_{id_sel}")
     with colf2:
-        cargo_f = st.text_input("Cargo pretendido", value=row["cargo_pretendido"])
-        data_cad_f = st.text_input("Data cadastro (YYYY-MM-DD)", value=row["data_cadastro"])
-        linkedin_f = st.text_input("LinkedIn", value=row.get("linkedin", ""))
+        # 👇 AQUI TAMBÉM GANHA UMA KEY ÚNICA
+        cargo_f = st.text_input(
+            "Cargo pretendido",
+            value=row["cargo_pretendido"],
+            key=f"cargo_pret_{id_sel}",
+        )
+        data_cad_f = st.text_input(
+            "Data cadastro (YYYY-MM-DD)",
+            value=row["data_cadastro"],
+            key=f"data_cad_{id_sel}",
+        )
+        linkedin_f = st.text_input(
+            "LinkedIn",
+            value=row.get("linkedin", ""),
+            key=f"linkedin_{id_sel}",
+        )
 
     st.markdown("**Currículo (CV) do candidato**")
     cv_atual = row.get("cv_arquivo", "") or ""
@@ -111,7 +129,7 @@ def run():
         key=f"cv_up_{id_sel}",
     )
 
-    if st.button("💾 Salvar ficha do candidato selecionado"):
+    if st.button("💾 Salvar ficha do candidato selecionado", key=f"btn_salvar_{id_sel}"):
         df_edit = carregar_candidatos()
         m2 = df_edit["id_candidato"] == str(id_sel)
         if not m2.any():
@@ -155,8 +173,14 @@ def run():
         key="cand_whats_sel",
     )
     row2 = df_view[df_view["id_candidato"] == str(id_sel2)].iloc[0]
-    telefone = row2["telefone"]
-    st.write(f"**Telefone:** {telefone}  |  **Cidade:** {row2['cidade']}")
+    telefone2 = row2["telefone"]
+    st.write(f"**Telefone:** {telefone2}  |  **Cidade:** {row2['cidade']}")
+    link = montar_link_whatsapp(telefone2)
+    if not link:
+        st.warning("Telefone inválido ou não informado.")
+    else:
+        st.markdown(f"[💬 Abrir conversa no WhatsApp]({link})")
+
     link = montar_link_whatsapp(telefone)
     if not link:
         st.warning("Telefone inválido ou não informado.")
