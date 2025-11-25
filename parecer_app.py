@@ -19,6 +19,8 @@ from modules import (
     importador,
     financeiro,
     hunting,
+    auth,
+    usuarios,
 )
 
 # ============================================================
@@ -30,26 +32,43 @@ st.set_page_config(
     layout="wide",
 )
 
+# =========================
+# Autenticação
+# =========================
+if "user" not in st.session_state or st.session_state["user"] is None:
+    auth.run()
+    st.stop()
+
+# Barra lateral com info do usuário logado
+st.sidebar.markdown(f"👤 Usuário: **{st.session_state['user']['username']}**")
+if st.sidebar.button("Sair", use_container_width=True):
+    st.session_state.clear()
+    st.experimental_rerun()
+
+opcoes_menu = [
+    "Dashboard",
+    "Cadastros Gerais (Clientes)",
+    "Recrutamento & Seleção",
+    "Sistemas / Acessos",
+    "Financeiro",
+]
+
+# Se for admin, mostra menu de Administração de Usuários
+if st.session_state["user"].get("is_admin", False):
+    opcoes_menu.append("Admin - Usuários")
+
 modulo = st.sidebar.radio(
     "Selecione o módulo:",
-    [
-        "Dashboard",
-        "Cadastros Gerais (Clientes)",
-        "Recrutamento & Seleção",
-        "Sistemas / Acessos",
-        "Financeiro",
-    ]
+    opcoes_menu
 )
 
 # DASHBOARD
 if modulo == "Dashboard":
     dashboard.run()
 
-# CLIENTES
 elif modulo == "Cadastros Gerais (Clientes)":
     clientes.run()
 
-# RECRUTAMENTO & SELEÇÃO
 elif modulo == "Recrutamento & Seleção":
     sub = st.tabs([
         "👤 Candidatos",
@@ -75,14 +94,11 @@ elif modulo == "Recrutamento & Seleção":
     with sub[6]:
         hunting.run()
 
-# ACESSOS
 elif modulo == "Sistemas / Acessos":
     acessos.run()
 
-# FINANCEIRO
 elif modulo == "Financeiro":
     financeiro.run()
 
-
-elif modulo == "Financeiro":
-    financeiro.run()
+elif modulo == "Admin - Usuários":
+    usuarios.run()
