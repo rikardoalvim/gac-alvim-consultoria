@@ -31,23 +31,23 @@ GLOBAL_CSS = '''
    ============================================ */
 
 html, body, [class*="css"] {
-    font-family: 'Inter', sans-serif !important;
+    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
 }
 
 /* Background geral */
 .stApp {
     background: linear-gradient(
         135deg,
-        rgba(203, 235, 255, 0.85) 0%,
-        rgba(222, 255, 245, 0.85) 50%,
-        rgba(246, 222, 255, 0.85) 100%
+        rgba(203, 235, 255, 0.9) 0%,
+        rgba(222, 255, 245, 0.9) 45%,
+        rgba(246, 222, 255, 0.9) 100%
     ) !important;
     background-attachment: fixed !important;
 }
 
-/* Conteúdo principal em card glass */
+/* Conteudo principal em card glass */
 .main .block-container {
-    background: rgba(255,255,255,0.86);
+    background: rgba(255,255,255,0.9);
     backdrop-filter: blur(22px) saturate(170%);
     -webkit-backdrop-filter: blur(22px) saturate(170%);
     border-radius: 26px;
@@ -62,10 +62,10 @@ html, body, [class*="css"] {
 
 /* Sidebar glass escura */
 section[data-testid="stSidebar"] {
-    background: rgba(15,23,42,0.92) !important;
+    background: rgba(15,23,42,0.96) !important;
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border-right: 1px solid rgba(15,23,42,0.8);
+    border-right: 1px solid rgba(15,23,42,0.9);
 }
 section[data-testid="stSidebar"] * {
     color: #e5e7eb !important;
@@ -74,7 +74,7 @@ section[data-testid="stSidebar"] .stRadio label {
     font-weight: 600;
 }
 
-/* Títulos */
+/* Titulos */
 h1, h2, h3, h4 {
     color: #0f172a !important;
     letter-spacing: -0.03em;
@@ -85,48 +85,68 @@ h1, h2, h3, h4 {
 }
 
 /* =========================
-   BOTÕES GERAIS – LIQUID GLASS
+   BOTOES GERAIS - LIQUID GLASS
    ========================= */
+
 .stButton > button {
     background: rgba(255,255,255,0.25) !important;
-    color: #222 !important;
+    color: #111827 !important;
     padding: 12px 26px !important;
     border-radius: 28px !important;
-    border: 1px solid rgba(255,255,255,0.45) !important;
+    border: 1px solid rgba(255,255,255,0.55) !important;
     font-weight: 600 !important;
-    backdrop-filter: blur(12px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
-    transition: 0.18s ease-in-out !important;
+    backdrop-filter: blur(16px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+    transition: transform 0.16s ease-out, box-shadow 0.16s ease-out, background 0.16s ease-out !important;
     box-shadow:
-        0 8px 24px rgba(0,0,0,0.15),
-        inset 0 0 18px rgba(255,255,255,0.45);
+        0 8px 24px rgba(15,23,42,0.18),
+        inset 0 0 18px rgba(255,255,255,0.55);
 }
 .stButton > button:hover {
     transform: translateY(-2px);
+    background: rgba(255,255,255,0.8) !important;
     box-shadow:
-        0 12px 32px rgba(0,0,0,0.22),
-        inset 0 0 22px rgba(255,255,255,0.55);
+        0 12px 30px rgba(15,23,42,0.24),
+        inset 0 0 22px rgba(255,255,255,0.75);
 }
 
-/* Botões de ação do módulo (Listar / Nova / Editar etc.) */
+/* Botoes de acao do modulo (Listar / Nova / Editar etc.) */
 .top-actions .stButton > button {
     padding: 0.8rem 1.9rem;
     font-size: 1.0rem;
 }
 
 /* =========================
-   MENU SUPERIOR – TABS
+   MENU SUPERIOR - TABS
    ========================= */
+
+/* remove underline padrao do Streamlit */
+.stTabs [data-baseweb="tab"] {
+    border-bottom: none !important;
+}
+.stTabs [aria-selected="true"] {
+    border-bottom: none !important;
+}
+
+/* container geral das tabs */
+.stTabs {
+    padding-top: 8px !important;
+    padding-bottom: 4px !important;
+}
+
+/* barra onde ficam as tabs */
 div[data-baseweb="tab-list"] {
     background: rgba(255,255,255,0.22) !important;
-    border-radius: 999px !important;
-    padding: 10px 14px !important;
+    border-radius: 40px !important;
+    padding: 10px 20px !important;
 
     width: 100% !important;
     display: flex !important;
-    flex-wrap: nowrap !important;
-    gap: 0.50rem !important;
+    justify-content: flex-start !important;
+    gap: 0.8rem !important;
+
     overflow-x: auto !important;
+    overflow-y: hidden !important;
     scroll-behavior: smooth !important;
 
     box-shadow:
@@ -134,42 +154,70 @@ div[data-baseweb="tab-list"] {
         inset 0 0 18px rgba(255,255,255,0.55) !important;
     backdrop-filter: blur(22px) saturate(170%) !important;
     -webkit-backdrop-filter: blur(22px) saturate(170%) !important;
+
+    margin-bottom: 20px;
 }
 
-/* esconder scroll mas manter movimento */
-div[data-baseweb="tab-list"]::-webkit-scrollbar { display: none; }
+/* esconder scrollbar */
+div[data-baseweb="tab-list"]::-webkit-scrollbar {
+    display: none !important;
+}
 div[data-baseweb="tab-list"] {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
 }
 
-/* Tab padrão */
+/* animacao leve bounce */
+@keyframes iosTabBounce {
+    0%   { transform: translateY(0) scale(1); }
+    40%  { transform: translateY(-3px) scale(1.03); }
+    100% { transform: translateY(-2px) scale(1); }
+}
+
+/* estilo das tabs (botoes) */
 button[role="tab"] {
-    background: rgba(255,255,255,0.35) !important;
-    padding: 12px 24px !important;
-    border-radius: 24px !important;
+    background: rgba(255,255,255,0.43) !important;
+    padding: 10px 22px !important;
+    border-radius: 18px !important;
+
     font-weight: 600 !important;
-    color: #222 !important;
-    transition: 0.20s ease-in-out;
-    border: 1px solid rgba(255,255,255,0.50) !important;
+    font-size: 0.98rem !important;
+
+    border: 1px solid rgba(255,255,255,0.55) !important;
+
+    color: #1f2937 !important;
+
     box-shadow:
-        0 6px 22px rgba(0,0,0,0.18),
-        inset 0 0 18px rgba(255,255,255,0.45) !important;
+        0 6px 22px rgba(0,0,0,0.12),
+        inset 0 0 18px rgba(255,255,255,0.40) !important;
+
+    transition: background 0.15s ease-in-out, color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
 }
 
-/* Tab selecionada */
+/* tab ativa com bounce */
 button[role="tab"][aria-selected="true"] {
-    background: rgba(255,255,255,0.90) !important;
-    color: #000 !important;
-    transform: translateY(-2px);
+    background: rgba(255,255,255,0.96) !important;
+    color: #000000 !important;
     box-shadow:
-        0 12px 32px rgba(0,0,0,0.22),
+        0 12px 32px rgba(0,0,0,0.16),
         inset 0 0 22px rgba(255,255,255,0.70) !important;
+    animation: iosTabBounce 220ms ease-out;
+}
+
+/* efeito de clique leve */
+button[role="tab"]:active {
+    transform: translateY(1px) scale(0.98);
+}
+
+/* remove borda superior do painel das tabs */
+.stTabs [data-baseweb="tab-panel"] {
+    border-top: none !important;
 }
 
 /* =========================
    INPUTS / TEXTAREAS / SELECTS
    ========================= */
+
 .stTextInput input,
 .stTextArea textarea {
     background-color: rgba(249,250,251,0.9) !important;
@@ -182,7 +230,7 @@ button[role="tab"][aria-selected="true"] {
     padding-bottom: 0.5rem !important;
 }
 
-/* remove bordas baseweb */
+/* remove bordas baseweb internas */
 div[data-baseweb="input"] > div,
 div[data-baseweb="textarea"] > div {
     background-color: transparent !important;
@@ -190,7 +238,7 @@ div[data-baseweb="textarea"] > div {
     box-shadow: none !important;
 }
 
-/* selectbox */
+/* selectbox glass */
 .stSelectbox > div > div {
     background-color: rgba(249,250,251,0.95) !important;
     border-radius: 14px !important;
@@ -199,7 +247,7 @@ div[data-baseweb="textarea"] > div {
                 0 0 0 1px rgba(255,255,255,0.6);
 }
 
-/* foco azul iOS */
+/* foco azul estilo iOS */
 .stTextInput input:focus,
 .stTextArea textarea:focus,
 .stSelectbox > div > div:focus-within {
@@ -209,12 +257,12 @@ div[data-baseweb="textarea"] > div {
         0 0 0 2px rgba(10,132,255,0.35) !important;
 }
 
-/* texto escuro */
+/* texto escuro em inputs */
 input, textarea, select {
     color: #0f172a !important;
 }
 
-/* dropdown opções */
+/* dropdown das opcoes */
 div[role="listbox"] {
     background: #ffffff !important;
     border-radius: 14px !important;
@@ -228,6 +276,7 @@ div[role="option"] {
 /* =========================
    TABELAS HTML
    ========================= */
+
 table {
     width: 100%;
     border-collapse: collapse;
@@ -253,8 +302,9 @@ table tr:last-child td {
 }
 
 /* =========================
-   DATAFRAMES (caso ainda use)
+   DATAFRAMES (st.dataframe)
    ========================= */
+
 div[data-testid="stDataFrame"] {
     background: #ffffff !important;
     border-radius: 18px !important;
@@ -264,7 +314,7 @@ div[data-testid="stDataFrame"] {
         inset 0 0 18px rgba(255,255,255,0.55);
 }
 
-/* força modo claro no AG-Grid */
+/* modo claro no AG-Grid */
 div[data-testid="stDataFrame"] .ag-root-wrapper,
 div[data-testid="stDataFrame"] .ag-root,
 div[data-testid="stDataFrame"] .ag-header,
@@ -289,7 +339,7 @@ div[data-testid="stAlert"] {
 '''
 
 # ============================================================
-# CONFIGURAÇÕES GERAIS
+# CONFIGURACOES GERAIS
 # ============================================================
 
 st.set_page_config(
@@ -302,16 +352,16 @@ st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 
 
 def main():
-    # controle de usuário logado
+    # controle de usuario logado
     if "usuario_logado" not in st.session_state:
         st.session_state["usuario_logado"] = None
 
-    # se não estiver logado, chama tela de autenticação
+    # se nao estiver logado, chama tela de autenticacao
     if st.session_state["usuario_logado"] is None:
         auth.run()
         return
 
-    # sidebar - info usuário e seleção de módulo
+    # sidebar - info usuario e selecao de modulo
     with st.sidebar:
         st.markdown(f"👤 **Usuário:** {st.session_state['usuario_logado']}")
         st.markdown("---")
@@ -330,7 +380,7 @@ def main():
             st.rerun()
 
     # =========================
-    # ROTEAMENTO DOS MÓDULOS
+    # ROTEAMENTO DOS MODULOS
     # =========================
     if modulo == "Dashboard":
         dashboard.run()
@@ -372,3 +422,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
