@@ -16,20 +16,18 @@ from .core import (
 def run():
     st.header("👤 Cadastro de Candidatos")
 
-    # ============================
     # CONTROLE DE MODO
-    # ============================
     if "candidatos_modo" not in st.session_state:
         st.session_state["candidatos_modo"] = "Listar"
 
-    col_a1, col_a2, col_a3 = st.columns(3)
-    with col_a1:
+    colA, colB, colC = st.columns(3)
+    with colA:
         if st.button("📋 Listar", use_container_width=True):
             st.session_state["candidatos_modo"] = "Listar"
-    with col_a2:
+    with colB:
         if st.button("➕ Inserir", use_container_width=True):
             st.session_state["candidatos_modo"] = "Inserir"
-    with col_a3:
+    with colC:
         if st.button("✏️ Editar", use_container_width=True):
             st.session_state["candidatos_modo"] = "Editar"
 
@@ -39,7 +37,7 @@ def run():
 
     df = carregar_candidatos()
 
-       # ============================
+    # ============================
     # MODO: LISTAR
     # ============================
     if modo == "Listar":
@@ -49,18 +47,18 @@ def run():
             st.info("Nenhum candidato cadastrado ainda.")
             return
 
-        df_view = df.sort_values("id_candidato").copy()
+        df_view = df.sort_values("id_candidato")
 
-        # Cria coluna com link do WhatsApp
+        # Monta tabela com botão/link WhatsApp
         def make_whats_link(tel):
             link = montar_link_whatsapp(tel)
             if not link:
                 return ""
             return f'<a href="{link}" target="_blank">💬 WhatsApp</a>'
 
+        df_view = df_view.copy()
         df_view["WhatsApp"] = df_view["telefone"].apply(make_whats_link)
 
-        # Seleciona só as colunas que você quer exibir
         df_show = df_view[
             ["id_candidato", "nome", "telefone", "cidade", "cargo_pretendido", "WhatsApp"]
         ].rename(
@@ -73,7 +71,6 @@ def run():
             }
         )
 
-        # Renderiza tabela com HTML habilitado
         st.write(
             df_show.to_html(index=False, escape=False),
             unsafe_allow_html=True,
@@ -82,7 +79,7 @@ def run():
         return
 
     # ============================
-    # MODO: INSERIR (NOVO CANDIDATO)
+    # MODO: INSERIR
     # ============================
     if modo == "Inserir":
         st.subheader("➕ Novo candidato")
@@ -101,8 +98,8 @@ def run():
                 key="data_cad_novo",
             ).strftime("%Y-%m-%d")
 
-        col_b1, col_b2 = st.columns([1, 1])
-        with col_b1:
+        colb1, colb2 = st.columns(2)
+        with colb1:
             if st.button("💾 Salvar candidato", key="btn_salvar_cand_novo", use_container_width=True):
                 if not nome.strip():
                     st.error("Informe o nome do candidato.")
@@ -118,8 +115,7 @@ def run():
                     st.success(f"Candidato cadastrado com ID {novo_id}.")
                     st.session_state["candidatos_modo"] = "Listar"
                     st.rerun()
-
-        with col_b2:
+        with colb2:
             if st.button("⬅ Voltar para lista", use_container_width=True):
                 st.session_state["candidatos_modo"] = "Listar"
                 st.rerun()
@@ -137,10 +133,10 @@ def run():
             return
 
         df_view = df.sort_values("id_candidato")
-
         opcoes = {int(row["id_candidato"]): row["nome"] for _, row in df_view.iterrows()}
+
         id_sel = st.selectbox(
-            "Selecione o candidato para editar:",
+            "Selecione o candidato:",
             options=list(opcoes.keys()),
             format_func=lambda x: opcoes[x],
             key="cand_edit_sel",
@@ -193,9 +189,13 @@ def run():
             key=f"cv_up_{id_sel}",
         )
 
-        col_c1, col_c2 = st.columns([1, 1])
-        with col_c1:
-            if st.button("💾 Salvar alterações", key=f"btn_salvar_edit_{id_sel}", use_container_width=True):
+        colc1, colc2 = st.columns(2)
+        with colc1:
+            if st.button(
+                "💾 Salvar alterações",
+                key=f"btn_salvar_{id_sel}",
+                use_container_width=True,
+            ):
                 df_edit = carregar_candidatos()
                 m2 = df_edit["id_candidato"] == str(id_sel)
                 if not m2.any():
@@ -221,9 +221,9 @@ def run():
                     st.success("Ficha atualizada com sucesso!")
                     st.session_state["candidatos_modo"] = "Listar"
                     st.rerun()
-
-        with col_c2:
+        with colc2:
             if st.button("⬅ Voltar para lista", use_container_width=True):
                 st.session_state["candidatos_modo"] = "Listar"
                 st.rerun()
 
+        return
