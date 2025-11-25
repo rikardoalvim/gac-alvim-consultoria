@@ -1,573 +1,453 @@
 # ================================
 # GAC - Gerenciador Alvim Consultoria
-# Aplicação principal
+# App principal (roteamento + layout iOS glass)
 # ================================
 
+import os
 import streamlit as st
 
+# Importa módulos internos
 from modules import (
     auth,
     dashboard,
     clientes,
     candidatos,
     vagas,
+    pipeline_mod,
     acessos,
+    financeiro,
     parecer_mod,
     historico,
-    pipeline_mod,
     importador,
-    financeiro,
     hunting,
-    usuarios,
 )
 
-# ============================================
-# CSS GLOBAL – LIQUID GLASS / iOS STYLE
-# ============================================
-
-GLOBAL_CSS = '''
-<style>
-/* ============================================
-   GLOBAL LIQUID GLASS UI - iOS STYLE
-   ============================================ */
-
-html, body, [class*="css"] {
-    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
-}
-
-/* Fundo geral da aplicação */
-.stApp {
-    background: linear-gradient(
-        135deg,
-        rgba(203, 235, 255, 0.9) 0%,
-        rgba(222, 255, 245, 0.9) 45%,
-        rgba(246, 222, 255, 0.9) 100%
-    ) !important;
-    background-attachment: fixed !important;
-}
-
-/* Conteúdo principal em card glass */
-.main .block-container {
-    background: rgba(255,255,255,0.9);
-    backdrop-filter: blur(22px) saturate(170%);
-    -webkit-backdrop-filter: blur(22px) saturate(170%);
-    border-radius: 26px;
-    padding: 2.2rem 3rem;
-    box-shadow:
-        0 24px 50px rgba(15,23,42,0.25),
-        inset 0 0 36px rgba(255,255,255,0.75);
-    border: 1px solid rgba(255,255,255,0.6);
-}
-
-/* remove margens exageradas */
-.block-container {
-    padding-top: 1.5rem !important;
-}
-
-/* ============================================
-   LOGIN PAGE
-   ============================================ */
-
-.login-card {
-    max-width: 420px;
-    margin: 4rem auto 2rem auto;
-    padding: 2.5rem 2.8rem;
-    border-radius: 28px;
-    background: radial-gradient(circle at top left, rgba(255,255,255,0.95), rgba(255,255,255,0.85));
-    backdrop-filter: blur(26px) saturate(180%);
-    -webkit-backdrop-filter: blur(26px) saturate(180%);
-    box-shadow:
-        0 28px 60px rgba(15,23,42,0.35),
-        inset 0 0 32px rgba(255,255,255,0.85);
-    border: 1px solid rgba(255,255,255,0.75);
-}
-
-/* título principal do login */
-.login-title {
-    font-size: 1.4rem;
-    font-weight: 700;
-    margin-bottom: 0.4rem;
-    background: linear-gradient(120deg, #0f172a, #1f2937);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-align: center;
-}
-
-/* subtítulo do login */
-.login-subtitle {
-    font-size: 0.95rem;
-    color: #4b5563;
-    text-align: center;
-    margin-bottom: 1.8rem;
-}
-
-/* Powered by */
-.login-powered {
-    font-size: 0.85rem;
-    color: #6b7280;
-    text-align: center;
-    margin-top: 1.8rem;
-    font-style: italic;
-}
-
-/* pequeno raiozinho */
-.login-powered span.icon {
-    font-size: 1rem;
-    margin-right: 0.35rem;
-}
-
-/* Campos do login */
-.login-card input {
-    border-radius: 999px !important;
-    padding: 0.55rem 1.0rem !important;
-    border: 1px solid rgba(148,163,184,0.8) !important;
-    background: rgba(255,255,255,0.95) !important;
-    color: #0f172a !important;
-}
-
-/* botão login */
-.login-card .stButton > button {
-    width: 100%;
-    border-radius: 999px !important;
-    padding: 0.55rem 1.0rem !important;
-    background: linear-gradient(135deg,#0f172a,#1e293b) !important;
-    color: #f9fafb !important;
-    border: none !important;
-    box-shadow:
-        0 16px 30px rgba(15,23,42,0.45),
-        inset 0 0 12px rgba(255,255,255,0.45) !important;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
-}
-.login-card .stButton > button:hover {
-    transform: translateY(-1px);
-    box-shadow:
-        0 20px 38px rgba(15,23,42,0.58),
-        inset 0 0 18px rgba(255,255,255,0.60) !important;
-}
-
-/* ============================================
-   MENU SUPERIOR – TAGS / TABS PRINCIPAIS
-   ============================================ */
-
-.top-nav-bar {
-    margin: -0.3rem 0 1.6rem 0;
-}
-
-.top-nav-bar .menu-wrap {
-    background: rgba(255,255,255,0.35);
-    border-radius: 16px;
-    padding: 0.4rem 0.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.75rem;
-    box-shadow:
-        0 16px 38px rgba(15,23,42,0.25),
-        inset 0 0 18px rgba(255,255,255,0.65) !important;
-    backdrop-filter: blur(22px) saturate(150%);
-    -webkit-backdrop-filter: blur(22px) saturate(150%);
-    border: 1px solid rgba(255,255,255,0.75);
-}
-
-/* grupo dos botões de módulo */
-.top-nav-bar .menu-buttons {
-    display: flex;
-    gap: 0.55rem;
-    overflow-x: auto;
-    padding-bottom: 0.15rem;
-}
-
-/* grupo usuário + logout */
-.top-nav-bar .menu-user {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    color: #111827;
-    padding: 0.25rem 0.6rem;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.75);
-}
-
-/* badge do usuário logado */
-.top-nav-bar .menu-user span.user-label {
-    font-weight: 600;
-}
-
-/* ============================================
-   BOTÕES GLASS – MENU SUPERIOR
-   ============================================ */
-
-.menu-chip button {
-    border-radius: 999px !important;
-    border: 1px solid rgba(255,255,255,0.8) !important;
-    padding: 0.35rem 0.95rem !important;
-    font-size: 0.88rem !important;
-    font-weight: 600 !important;
-    color: #0f172a !important;
-    background: radial-gradient(circle at top, rgba(255,255,255,0.95), rgba(241,245,249,0.85)) !important;
-    box-shadow:
-        0 10px 20px rgba(15,23,42,0.20),
-        inset 0 0 18px rgba(255,255,255,0.85) !important;
-    backdrop-filter: blur(18px) saturate(170%) !important;
-    -webkit-backdrop-filter: blur(18px) saturate(170%) !important;
-    transition: transform 0.12s ease-out, box-shadow 0.12s ease-out, background 0.12s ease-out !important;
-}
-
-/* estado "ativo" – quando esse módulo está selecionado */
-.menu-chip button.selected {
-    background: radial-gradient(circle at top, #0f172a, #111827) !important;
-    color: #e5e7eb !important;
-    box-shadow:
-        0 14px 28px rgba(15,23,42,0.40),
-        inset 0 0 18px rgba(255,255,255,0.20) !important;
-    border-color: rgba(15,23,42,0.9) !important;
-}
-
-/* animação de bounce sutil */
-.menu-chip button:active {
-    transform: translateY(1px) scale(0.98) !important;
-    box-shadow:
-        0 8px 14px rgba(15,23,42,0.35),
-        inset 0 0 14px rgba(255,255,255,0.55) !important;
-}
-
-/* Usuário / logout botão minimalista */
-.menu-user .stButton > button {
-    border-radius: 999px !important;
-    padding: 0.2rem 0.8rem !important;
-    font-size: 0.78rem !important;
-    background: rgba(248,250,252,0.9) !important;
-    border: 1px solid rgba(148,163,184,0.7) !important;
-    box-shadow: none !important;
-    color: #0f172a !important;
-}
-.menu-user .stButton > button:hover {
-    background: rgba(241,245,249,1) !important;
-}
-
-/* =========================
-   BOTÕES GERAIS – LIQUID GLASS
-   ========================= */
-
-.stButton > button {
-    background: rgba(255,255,255,0.25) !important;
-    color: #111827 !important;
-    padding: 12px 26px !important;
-    border-radius: 28px !important;
-    border: 1px solid rgba(255,255,255,0.55) !important;
-    font-weight: 600 !important;
-    backdrop-filter: blur(16px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-    transition: transform 0.16s ease-out, box-shadow 0.16s ease-out, background 0.16s ease-out !important;
-    box-shadow:
-        0 8px 24px rgba(15,23,42,0.18),
-        inset 0 0 18px rgba(255,255,255,0.55);
-}
-.stButton > button:hover {
-    transform: translateY(-2px);
-    background: rgba(255,255,255,0.8) !important;
-    box-shadow:
-        0 12px 30px rgba(15,23,42,0.24),
-        inset 0 0 22px rgba(255,255,255,0.75);
-}
-
-/* Botões de ação do módulo (Listar / Nova / Editar etc.) */
-.top-actions .stButton > button {
-    padding: 0.8rem 1.9rem;
-    font-size: 1.0rem;
-}
-
-/* ============================================
-   CAMPOS DE FORMULÁRIO – INPUTS / TEXTAREAS
-   ============================================ */
-
-input, textarea, select {
-    color: #0f172a !important;
-}
-
-/* dropdown das opções */
-div[role="listbox"] {
-    background: #ffffff !important;
-    border-radius: 14px !important;
-    border: 1px solid #cbd5e1 !important;
-    box-shadow: 0 14px 30px rgba(15,23,42,0.35);
-}
-div[role="option"] {
-    color: #0f172a !important;
-}
-
-/* Alertas */
-div[data-testid="stAlert"] {
-    border-radius: 14px;
-    background: #f9fafb !important;
-}
-
-/* ============================================
-   Tabelas HTML simples (listas) – candidatos, vagas, etc.
-   Aplica globalmente, pra garantir.
-   ============================================ */
-
-table {
-    width: 100%;
-    border-collapse: collapse;
-    background-color: #ffffff !important;
-    border-radius: 18px;
-    overflow: hidden;
-    box-shadow:
-        0 10px 28px rgba(15,23,42,0.18),
-        inset 0 0 16px rgba(255,255,255,0.75);
-    margin-top: 0.8rem;
-}
-
-th, td {
-    padding: 0.55rem 0.85rem;
-    text-align: left;
-}
-
-thead {
-    background: #f1f5f9;
-}
-thead th {
-    font-size: 0.80rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #6b7280;
-}
-
-tbody tr:nth-child(even) {
-    background: #f9fafb;
-}
-
-tbody tr:hover {
-    background: #eff6ff;
-}
-
-/* linhas mais "macias" */
-td {
-    border-bottom: 1px solid #e5e7eb;
-    font-size: 0.95rem;
-}
-
-/* cabeçalho em negrito */
-th {
-    font-weight: 700;
-}
-
-/* última linha sem borda embaixo */
-tr:last-child td {
-    border-bottom: none;
-}
-
-/* ============================================
-   DataFrames / DataEditors – estilo glass unificado
-   ============================================ */
-
-div[data-testid="stDataFrame"],
-div[data-testid="stDataEditor"] {
-    background: rgba(255,255,255,0.92) !important;
-    backdrop-filter: blur(20px) saturate(170%) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(170%) !important;
-    border-radius: 18px !important;
-    box-shadow:
-        0 18px 40px rgba(15,23,42,0.20),
-        inset 0 0 14px rgba(255,255,255,0.65) !important;
-    padding: 4px 6px !important;
-}
-
-/* remove barras muito escuras */
-div[data-testid="stDataFrame"] table,
-div[data-testid="stDataEditor"] table {
-    background: transparent !important;
-}
-
-/* células internas */
-div[data-testid="stDataFrame"] table td,
-div[data-testid="stDataFrame"] table th,
-div[data-testid="stDataEditor"] table td,
-div[data-testid="stDataEditor"] table th {
-    background-color: transparent !important;
-    color: #0f172a !important;
-    border-bottom: 1px solid rgba(148,163,184,0.45) !important;
-}
-
-
-</style>
-'''
-
-# ============================================================
-# CONFIGURAÇÕES GERAIS
-# ============================================================
+# -------------------------------------------------
+# CONFIG GERAL
+# -------------------------------------------------
 
 st.set_page_config(
     page_title="GAC - Gerenciador Alvim Consultoria",
     layout="wide",
 )
 
-# aplica o CSS global
-st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
+# -------------------------------------------------
+# CSS GLOBAL – TEMA GLASS / iOS STYLE
+# -------------------------------------------------
+
+GLASS_CSS = """
+<style>
+/* Remove o excesso de padding padrão do Streamlit */
+.main .block-container {
+    padding-top: 1.5rem;
+    padding-bottom: 2rem;
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+    max-width: 1400px;
+}
+
+/* Fundo gradiente tipo iOS */
+.stApp {
+    background: radial-gradient(circle at top left, #e0f7ff 0, #d8f5e9 35%, #f6e6ff 100%);
+    color: #0f172a;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+                 "Segoe UI", sans-serif;
+}
+
+/* Esconde header padrão do Streamlit */
+header[data-testid="stHeader"] {
+    background: transparent;
+}
+
+/* Títulos */
+h1, h2, h3, h4 {
+    color: #0f172a;
+    font-weight: 700;
+}
+
+/* Cartão de usuário e cards em geral */
+.glass-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.70), rgba(255,255,255,0.35));
+    border-radius: 28px;
+    padding: 1.0rem 1.4rem;
+    box-shadow:
+        0 18px 45px rgba(15,23,42,0.22),
+        0 0 0 1px rgba(255,255,255,0.60);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+}
+
+/* BOTÕES GLASS (todos os st.button) */
+div[data-testid="stButton"] > button {
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.8);
+    background: radial-gradient(circle at top left,
+        rgba(255,255,255,0.95),
+        rgba(255,255,255,0.75)
+    );
+    color: #0f172a;
+    padding: 0.55rem 1.4rem;
+    font-weight: 600;
+    font-size: 0.98rem;
+    box-shadow:
+        0 14px 35px rgba(15,23,42,0.20),
+        0 0 0 1px rgba(255,255,255,0.90);
+    backdrop-filter: blur(24px) saturate(160%);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    transition: transform 0.16s ease-out, box-shadow 0.16s ease-out,
+                background 0.18s ease-out;
+}
+
+/* Hover e "bounce" suave */
+div[data-testid="stButton"] > button:hover {
+    transform: translateY(-2px) scale(1.01);
+    box-shadow:
+        0 20px 40px rgba(15,23,42,0.26),
+        0 0 0 1px rgba(255,255,255,0.95);
+}
+
+/* Clicado */
+div[data-testid="stButton"] > button:active {
+    transform: translateY(0px) scale(0.98);
+    box-shadow:
+        0 10px 25px rgba(15,23,42,0.18),
+        0 0 0 1px rgba(255,255,255,0.85);
+}
+
+/* NAV BAR SUPERIOR */
+.app-nav-bar {
+    margin-bottom: 1.2rem;
+}
+
+.app-nav-inner {
+    display: flex;
+    gap: 0.9rem;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Ajusta os botões da barra de navegação para ficarem do mesmo tamanho visual */
+.app-nav-inner > div[data-testid="column"] > div {
+    width: 100%;
+}
+
+/* Deixa o texto dos botões centralizado e mais clean */
+div[data-testid="stButton"] > button p {
+    margin: 0;
+}
+
+/* Linha com usuário, botão Parecer e Sair */
+.user-row {
+    margin-top: 0.4rem;
+    margin-bottom: 1.6rem;
+}
+
+/* Label do usuário */
+.user-label {
+    font-size: 0.95rem;
+    color: #0f172a;
+    opacity: 0.85;
+}
+
+/* INPUTS: text, number, date, etc */
+div[data-testid="stTextInput"] > div > div,
+div[data-testid="stNumberInput"] > div > div,
+div[data-testid="stDateInput"] > div > div {
+    background: linear-gradient(
+        135deg,
+        rgba(255,255,255,0.85),
+        rgba(255,255,255,0.60)
+    );
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.92);
+    box-shadow:
+        0 10px 28px rgba(15,23,42,0.20),
+        0 0 0 1px rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+
+div[data-testid="stTextInput"] input,
+div[data-testid="stNumberInput"] input {
+    color: #0f172a;
+    font-weight: 500;
+}
+
+/* TEXT AREA */
+div[data-testid="stTextArea"] textarea {
+    background: linear-gradient(
+        135deg,
+        rgba(255,255,255,0.88),
+        rgba(255,255,255,0.70)
+    );
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.95);
+    color: #0f172a;
+    box-shadow:
+        0 12px 30px rgba(15,23,42,0.20),
+        0 0 0 1px rgba(255,255,255,0.88);
+}
+
+/* SELECTS / MULTISELECT – fundo claro, tipo glass */
+div[data-baseweb="select"] > div {
+    background: linear-gradient(
+        135deg,
+        rgba(255,255,255,0.9),
+        rgba(255,255,255,0.70)
+    );
+    border-radius: 18px !important;
+    border: 1px solid rgba(255,255,255,0.95);
+    box-shadow:
+        0 10px 26px rgba(15,23,42,0.20),
+        0 0 0 1px rgba(255,255,255,0.90);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    color: #0f172a;
+}
+
+/* Texto dentro do select */
+div[data-baseweb="select"] div[role="button"] {
+    color: #0f172a;
+    font-weight: 500;
+}
+
+/* Dropdown da lista (onde hoje está preto) */
+div[role="listbox"] {
+    background: rgba(255,255,255,0.95) !important;
+    color: #0f172a !important;
+    border-radius: 22px !important;
+    box-shadow:
+        0 20px 45px rgba(15,23,42,0.35),
+        0 0 0 1px rgba(255,255,255,0.95);
+    backdrop-filter: blur(22px) saturate(170%);
+    -webkit-backdrop-filter: blur(22px) saturate(170%);
+}
+
+/* Item selecionado do dropdown */
+div[role="option"][aria-selected="true"] {
+    background: linear-gradient(135deg, #f97316, #fb7185) !important;
+    color: #ffffff !important;
+}
+
+/* TABLES – usadas nas listas (candidatos, vagas, pipeline etc.) */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.4rem;
+    margin-bottom: 0.2rem;
+    background: linear-gradient(
+        135deg,
+        rgba(15,23,42,0.87),
+        rgba(15,23,42,0.92)
+    );
+    border-radius: 26px;
+    overflow: hidden;
+    box-shadow:
+        0 26px 60px rgba(15,23,42,0.70),
+        0 0 0 1px rgba(255,255,255,0.15);
+}
+
+th, td {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 0.92rem;
+}
+
+thead tr {
+    background: linear-gradient(135deg, #0f172a, #020617);
+}
+
+th {
+    color: #e5e7eb;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(148,163,184,0.55);
+}
+
+tbody tr:nth-child(even) {
+    background-color: rgba(15,23,42,0.96);
+}
+
+tbody tr:nth-child(odd) {
+    background-color: rgba(15,23,42,0.90);
+}
+
+td {
+    color: #f9fafb;
+    border-bottom: 1px solid rgba(30,41,59,0.85);
+}
+
+/* Última linha da tabela sem borda inferior pesada */
+tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Modo atual label */
+.modo-atual-label {
+    font-size: 0.95rem;
+    margin-top: 0.1rem;
+    margin-bottom: 0.8rem;
+}
+</style>
+"""
+
+st.markdown(GLASS_CSS, unsafe_allow_html=True)
+
+# -------------------------------------------------
+# NAV ITEMS
+# -------------------------------------------------
+
+NAV_ITEMS = [
+    {"id": "dashboard",  "label": "Dashboard",  "icon": "📊"},
+    {"id": "clientes",   "label": "Clientes",   "icon": "🏙️"},
+    {"id": "candidatos", "label": "Candidatos", "icon": "👤"},
+    {"id": "vagas",      "label": "Vagas",      "icon": "🧩"},
+    {"id": "pipeline",   "label": "Pipeline",   "icon": "📌"},
+    {"id": "acessos",    "label": "Acessos",    "icon": "🔐"},
+    {"id": "financeiro", "label": "Financeiro", "icon": "💰"},
+]
+
+
+def draw_top_nav(active_id: str) -> str:
+    """
+    Desenha a barra superior de navegação (Dashboard, Clientes, etc)
+    e retorna o id da página ativa (caso tenha sido clicada).
+    """
+    # Container visual
+    st.markdown('<div class="app-nav-bar"><div class="app-nav-inner">',
+                unsafe_allow_html=True)
+
+    cols = st.columns(len(NAV_ITEMS))
+
+    new_active = active_id
+
+    for col, item in zip(cols, NAV_ITEMS):
+        label = f"{item['icon']} {item['label']}"
+        key = f"nav_{item['id']}"
+        with col:
+            if st.button(label, use_container_width=True, key=key):
+                new_active = item["id"]
+
+    st.markdown("</div></div>", unsafe_allow_html=True)
+    return new_active
 
 
 def main():
-    # controle de usuário logado
-    if "usuario_logado" not in st.session_state:
-        st.session_state["usuario_logado"] = None
-
-    # se não estiver logado, mostra apenas tela de login
-    if not st.session_state["usuario_logado"]:
-        auth.run()
+    # -------------------------------------------------
+    # AUTENTICAÇÃO
+    # -------------------------------------------------
+    # auth.run() deve mostrar tela de login se necessário
+    # e retornar o nome do usuário logado (str) quando ok.
+    usuario = auth.run()
+    if not usuario:
+        # auth.run já tratou a tela de login
         return
 
-    # se estiver logado, mostra o app principal
-    usuario = st.session_state["usuario_logado"]
+    # Guarda no session_state para outros módulos (se quiser usar)
+    st.session_state["usuario_logado"] = usuario
 
-    # =========================
-    # BARRA SUPERIOR CUSTOM
-    # =========================
-    with st.container():
-        st.markdown('<div class="top-nav-bar">', unsafe_allow_html=True)
-        col_menu, = st.columns(1)
-        with col_menu:
-            st.markdown('<div class="menu-wrap">', unsafe_allow_html=True)
+    # Página ativa (navegação principal)
+    if "gac_active_page" not in st.session_state:
+        st.session_state["gac_active_page"] = "dashboard"
 
-            # lado esquerdo – botões de módulos
-            st.markdown('<div class="menu-buttons">', unsafe_allow_html=True)
+    active_page = st.session_state["gac_active_page"]
 
-            # definindo módulo atual na sessão
-            if "modulo_atual" not in st.session_state:
-                st.session_state["modulo_atual"] = "Dashboard"
+    # -------------------------------------------------
+    # NAV SUPERIOR
+    # -------------------------------------------------
+    active_page = draw_top_nav(active_page)
+    st.session_state["gac_active_page"] = active_page
 
-            def menu_button(label, modulo_nome, icon):
-                selected = (st.session_state["modulo_atual"] == modulo_nome)
-                key = f"menu_{modulo_nome.replace(' ', '_').lower()}"
-                btn = st.button(
-                    f"{icon} {label}",
-                    key=key,
-                    help=modulo_nome,
-                    use_container_width=False,
-                )
-                # aplicar classe de selecionado via HTML wrapper
-                class_attr = "menu-chip"
-                if selected:
-                    st.markdown(
-                        f"""
-                        <script>
-                        const btn = window.parent.document.querySelector('button[kind="{key}"]')
-                        </script>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-                if btn:
-                    st.session_state["modulo_atual"] = modulo_nome
+    # -------------------------------------------------
+    # LINHA COM USUÁRIO / PARECER / SAIR
+    # -------------------------------------------------
+    c1, c2, c3 = st.columns([1.4, 1.2, 0.8])
 
-            # Botões principais – em linha
-            col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
-            with col1:
-                with st.container():
-                    st.markdown('<div class="menu-chip">', unsafe_allow_html=True)
-                    if st.button("📊 Dashboard", key="mod_dashboard"):
-                        st.session_state["modulo_atual"] = "Dashboard"
-                    st.markdown('</div>', unsafe_allow_html=True)
-            with col2:
-                with st.container():
-                    st.markdown('<div class="menu-chip">', unsafe_allow_html=True)
-                    if st.button("🏢 Clientes", key="mod_clientes"):
-                        st.session_state["modulo_atual"] = "Clientes"
-                    st.markdown('</div>', unsafe_allow_html=True)
-            with col3:
-                with st.container():
-                    st.markdown('<div class="menu-chip">', unsafe_allow_html=True)
-                    if st.button("👤 Candidatos", key="mod_candidatos"):
-                        st.session_state["modulo_atual"] = "Candidatos"
-                    st.markdown('</div>', unsafe_allow_html=True)
-            with col4:
-                with st.container():
-                    st.markdown('<div class="menu-chip">', unsafe_allow_html=True)
-                    if st.button("🧩 Vagas", key="mod_vagas"):
-                        st.session_state["modulo_atual"] = "Vagas"
-                    st.markdown('</div>', unsafe_allow_html=True)
-            with col5:
-                with st.container():
-                    st.markdown('<div class="menu-chip">', unsafe_allow_html=True)
-                    if st.button("📌 Pipeline", key="mod_pipeline"):
-                        st.session_state["modulo_atual"] = "Pipeline"
-                    st.markdown('</div>', unsafe_allow_html=True)
-            with col6:
-                with st.container():
-                    st.markdown('<div class="menu-chip">', unsafe_allow_html=True)
-                    if st.button("🔐 Acessos", key="mod_acessos"):
-                        st.session_state["modulo_atual"] = "Acessos"
-                    st.markdown('</div>', unsafe_allow_html=True)
-            with col7:
-                with st.container():
-                    st.markdown('<div class="menu-chip">', unsafe_allow_html=True)
-                    if st.button("💰 Financeiro", key="mod_financeiro"):
-                        st.session_state["modulo_atual"] = "Financeiro"
-                    st.markdown('</div>', unsafe_allow_html=True)
+    with c1:
+        st.markdown(
+            f"""
+            <div class="glass-card">
+                <div class="user-label">
+                    <strong>Usuário:</strong> {usuario}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-            st.markdown('</div>', unsafe_allow_html=True)  # fecha .menu-buttons
+    with c2:
+        # Botão grande que leva direto para o módulo de parecer
+        if st.button("📄 Parecer", use_container_width=True, key="btn_ir_parecer"):
+            st.session_state["gac_active_page"] = "parecer"
+            active_page = "parecer"
 
-            # lado direito – usuário logado + logout
-            st.markdown('<div class="menu-user">', unsafe_allow_html=True)
-            st.markdown(
-                f'<span class="user-label">👤 {usuario}</span>',
-                unsafe_allow_html=True,
-            )
-            col_u1, col_u2 = st.columns([1,1])
-            with col_u1:
-                if st.button("📄 Parecer", key="mod_parecer_top"):
-                    st.session_state["modulo_atual"] = "Parecer"
-            with col_u2:
-                if st.button("🚪 Sair", key="logout_button"):
-                    st.session_state["usuario_logado"] = None
-                    st.experimental_rerun()
-            st.markdown('</div>', unsafe_allow_html=True)  # fecha .menu-user
+    with c3:
+        if st.button("⏏ Sair", use_container_width=True, key="btn_logout"):
+            # Delega para o auth limpar a sessão, se houver lógica lá
+            if hasattr(auth, "logout"):
+                auth.logout()
+            # Limpa flag local e força reload
+            if "gac_active_page" in st.session_state:
+                del st.session_state["gac_active_page"]
+            st.rerun()
 
-            st.markdown('</div>', unsafe_allow_html=True)  # fecha .menu-wrap
+    # -------------------------------------------------
+    # INDICADOR DE MÓDULO ATUAL
+    # -------------------------------------------------
+    label_map = {
+        "dashboard": "Dashboard",
+        "clientes": "Cadastro de Clientes",
+        "candidatos": "Cadastro de Candidatos",
+        "vagas": "Gestão de Vagas",
+        "pipeline": "Pipeline de Candidatos",
+        "acessos": "Gerenciador de Acessos",
+        "financeiro": "Financeiro",
+        "parecer": "Parecer de Triagem",
+    }
+    nome_modo = label_map.get(active_page, active_page)
 
-        st.markdown('</div>', unsafe_allow_html=True)  # fecha .top-nav-bar
+    st.markdown(
+        f'<div class="modo-atual-label"><strong>Módulo atual:</strong> {nome_modo}</div>',
+        unsafe_allow_html=True,
+    )
 
-    # =========================
-    # NAVEGAÇÃO ENTRE MÓDULOS
-    # =========================
+    # -------------------------------------------------
+    # ROTEAMENTO DOS MÓDULOS
+    # -------------------------------------------------
+    if active_page == "dashboard":
+        # Se você ainda não tiver um módulo dashboard, comente essa linha
+        try:
+            dashboard.run()
+        except Exception:
+            st.info("Dashboard ainda não implementado. :)")
 
-    modulo = st.session_state["modulo_atual"]
-
-    if modulo == "Dashboard":
-        dashboard.run()
-
-    elif modulo == "Clientes":
+    elif active_page == "clientes":
         clientes.run()
 
-    elif modulo == "Candidatos":
+    elif active_page == "candidatos":
         candidatos.run()
 
-    elif modulo == "Vagas":
+    elif active_page == "vagas":
         vagas.run()
 
-    elif modulo == "Pipeline":
+    elif active_page == "pipeline":
         pipeline_mod.run()
 
-    elif modulo == "Acessos":
+    elif active_page == "acessos":
         acessos.run()
 
-    elif modulo == "Financeiro":
+    elif active_page == "financeiro":
         financeiro.run()
 
-    elif modulo == "Parecer":
+    elif active_page == "parecer":
         parecer_mod.run()
 
-    elif modulo == "Usuários":
-        usuarios.run()
-
     else:
-        st.write("Módulo não reconhecido.")
+        st.write("Módulo não reconhecido:", active_page)
 
 
 if __name__ == "__main__":
     main()
+
 
 
 
