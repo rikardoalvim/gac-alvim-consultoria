@@ -8,6 +8,7 @@ import sys
 import streamlit as st
 
 from modules import (
+    dashboard,          # ← ADICIONADO
     clientes,
     candidatos,
     vagas,
@@ -28,9 +29,11 @@ st.set_page_config(
     page_title="GAC - Gerenciador Alvim Consultoria",
     layout="wide",
 )
+
 modulo = st.sidebar.radio(
     "Selecione o módulo:",
     [
+        "Dashboard",
         "Cadastros Gerais (Clientes)",
         "Recrutamento & Seleção",
         "Sistemas / Acessos",
@@ -38,9 +41,15 @@ modulo = st.sidebar.radio(
     ]
 )
 
-if modulo == "Cadastros Gerais (Clientes)":
+# DASHBOARD
+if modulo == "Dashboard":
+    dashboard.run()
+
+# CLIENTES
+elif modulo == "Cadastros Gerais (Clientes)":
     clientes.run()
 
+# RECRUTAMENTO & SELEÇÃO
 elif modulo == "Recrutamento & Seleção":
     sub = st.tabs([
         "👤 Candidatos",
@@ -49,7 +58,7 @@ elif modulo == "Recrutamento & Seleção":
         "📁 Histórico",
         "📌 Pipeline",
         "📥 Importar antigos",
-         "🔎 Hunting / LinkedIn",
+        "🔎 Hunting / LinkedIn",
     ])
     with sub[0]:
         candidatos.run()
@@ -66,8 +75,14 @@ elif modulo == "Recrutamento & Seleção":
     with sub[6]:
         hunting.run()
 
+# ACESSOS
 elif modulo == "Sistemas / Acessos":
     acessos.run()
+
+# FINANCEIRO
+elif modulo == "Financeiro":
+    financeiro.run()
+
 
 elif modulo == "Financeiro":
     financeiro.run()
