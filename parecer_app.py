@@ -37,7 +37,9 @@ st.set_page_config(
 GLOBAL_CSS = """
 <style>
 
-/* FUNDO GERAL – LIQUID GLASS */
+/* =========================
+   FUNDO GERAL LIQUID GLASS
+   ========================= */
 html, body, [data-testid="stAppViewContainer"] {
     background:
         radial-gradient(circle at 0% 0%, #9bb5ff 0, transparent 45%),
@@ -45,12 +47,7 @@ html, body, [data-testid="stAppViewContainer"] {
         radial-gradient(circle at 50% 100%, #a5f3fc 0, #e5f0ff 55%);
 }
 
-/* container raiz sem fundo sólido extra */
-[data-testid="stAppViewContainer"] {
-    background-color: transparent !important;
-}
-
-/* CONTEÚDO PRINCIPAL – CARD LIQUID GLASS CLARO */
+/* container principal glass */
 .main .block-container {
     background: rgba(255,255,255,0.86);
     backdrop-filter: blur(22px) saturate(170%);
@@ -65,7 +62,7 @@ html, body, [data-testid="stAppViewContainer"] {
         0 0 0 1px rgba(148,163,184,0.25);
 }
 
-/* SIDEBAR – GLASS ESCURO */
+/* sidebar glass escura */
 section[data-testid="stSidebar"] {
     background: rgba(15,23,42,0.92) !important;
     backdrop-filter: blur(24px) saturate(180%);
@@ -79,7 +76,9 @@ section[data-testid="stSidebar"] .stRadio label {
     font-weight: 600;
 }
 
-/* TÍTULOS E TEXTOS */
+/* =========================
+   TIPOGRAFIA
+   ========================= */
 h1, h2, h3, h4 {
     color: #0f172a !important;
     letter-spacing: -0.03em;
@@ -88,42 +87,102 @@ h1, h2, h3, h4 {
     color: #1f2933 !important;
 }
 
-/* BOTÕES – CAPSULA iOS */
+/* =========================
+   BOTÕES GERAIS – LIQUID GLASS
+   ========================= */
 .stButton > button {
-    background: linear-gradient(135deg, #ffffff, #e0ebff);
+    background: radial-gradient(circle at 0% 0%, rgba(255,255,255,0.85), rgba(224,235,255,0.8));
     color: #0f172a !important;
     padding: 0.6rem 1.4rem;
     border-radius: 999px;
     border: 1px solid rgba(148,163,184,0.7);
-    box-shadow: 0 8px 24px rgba(15,23,42,0.22);
+    box-shadow:
+        0 8px 24px rgba(15,23,42,0.22),
+        inset 0 0 22px rgba(255,255,255,0.6);
     font-weight: 600;
     font-size: 0.94rem;
     transition: all 0.18s ease-out;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
 }
 .stButton > button:hover {
-    background: linear-gradient(135deg, #e5f0ff, #c7ddff);
+    background: radial-gradient(circle at 0% 0%, rgba(255,255,255,0.95), rgba(199,221,255,0.95));
     transform: translateY(-2px) scale(1.01);
-    box-shadow: 0 14px 32px rgba(15,23,42,0.3);
-    border-color: rgba(59,130,246,0.8);
+    box-shadow:
+        0 14px 32px rgba(15,23,42,0.30),
+        inset 0 0 30px rgba(255,255,255,0.9);
+    border-color: rgba(59,130,246,0.9);
+}
+
+/* BOTÕES DE AÇÃO SUPERIORES (Listar / Nova / Editar etc.) */
+.top-actions .stButton > button {
+    padding: 0.8rem 1.9rem;
+    font-size: 1.0rem;
+}
+
+/* =========================
+   MENU SUPERIOR – TABS
+   ========================= */
+/* container da lista de tabs */
+div[data-baseweb="tab-list"] {
+    background: rgba(255,255,255,0.22) !important;
+    border-radius: 999px;
+    padding: 6px;
+    margin-bottom: 1.2rem;
+    box-shadow:
+        0 8px 28px rgba(15,23,42,0.25),
+        inset 0 0 18px rgba(255,255,255,0.55);
+    backdrop-filter: blur(22px) saturate(170%);
+    -webkit-backdrop-filter: blur(22px) saturate(170%);
+}
+
+/* tirar barra de destaque padrão (vermelha) */
+div[data-baseweb="tab-highlight"] {
+    background: transparent !important;
+}
+
+/* cada tab como cápsula glass */
+button[role="tab"] {
+    border-radius: 999px !important;
+    padding: 0.55rem 1.4rem !important;
+    margin: 0 0.25rem !important;
+    border: 1px solid transparent !important;
+    background: rgba(255,255,255,0.08) !important;
+    color: #1f2933 !important;
+    font-weight: 500 !important;
+    font-size: 0.96rem !important;
+    box-shadow: none !important;
+    transition: all 0.16s ease-out !important;
+}
+
+/* tab selecionada – botão igual iOS */
+button[role="tab"][aria-selected="true"] {
+    background: radial-gradient(circle at 0% 0%, rgba(255,255,255,0.98), rgba(232,241,255,0.95)) !important;
+    color: #0f172a !important;
+    font-weight: 700 !important;
+    border-color: rgba(148,163,184,0.9) !important;
+    box-shadow:
+        0 8px 24px rgba(15,23,42,0.26),
+        inset 0 0 26px rgba(255,255,255,0.9) !important;
+    transform: translateY(-1px);
 }
 
 /* =========================
    INPUTS / TEXTAREAS / SELECTS
    ========================= */
-
-/* Caixas de texto iOS */
 .stTextInput input,
 .stTextArea textarea {
-    background-color: #f9fafb !important;
+    background-color: rgba(249,250,251,0.9) !important;
     color: #0f172a !important;
     border-radius: 14px !important;
     border: 1px solid #cbd5e1 !important;
-    box-shadow: inset 0 0 0 1px rgba(148,163,184,0.35);
+    box-shadow: inset 0 0 0 1px rgba(148,163,184,0.35),
+                0 0 0 1px rgba(255,255,255,0.8);
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
 }
 
-/* remove “caixa preta” do wrapper baseweb */
+/* remove borda baseweb */
 div[data-baseweb="input"] > div,
 div[data-baseweb="textarea"] > div {
     background-color: transparent !important;
@@ -131,12 +190,13 @@ div[data-baseweb="textarea"] > div {
     box-shadow: none !important;
 }
 
-/* selectbox “capsula clara” */
+/* selectbox cápsula */
 .stSelectbox > div > div {
-    background-color: #f9fafb !important;
+    background-color: rgba(249,250,251,0.95) !important;
     border-radius: 14px !important;
     border: 1px solid #cbd5e1 !important;
-    box-shadow: inset 0 0 0 1px rgba(148,163,184,0.35);
+    box-shadow: inset 0 0 0 1px rgba(148,163,184,0.35),
+                0 0 0 1px rgba(255,255,255,0.6);
 }
 
 /* foco azul iOS */
@@ -145,7 +205,8 @@ div[data-baseweb="textarea"] > div {
 .stSelectbox > div > div:focus-within {
     outline: none !important;
     border-color: #0a84ff !important;
-    box-shadow: 0 0 0 2px rgba(10,132,255,0.35) !important;
+    box-shadow:
+        0 0 0 2px rgba(10,132,255,0.35) !important;
 }
 
 /* texto sempre escuro nos campos */
@@ -153,18 +214,29 @@ input, textarea, select {
     color: #0f172a !important;
 }
 
-/* =========================
-   LISTAS / TABELAS – PADRÃO ÚNICO
-   ========================= */
+/* dropdown das opções */
+div[role="listbox"] {
+    background: #ffffff !important;
+    border-radius: 14px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 14px 30px rgba(15,23,42,0.35);
+}
+div[role="option"] {
+    color: #0f172a !important;
+}
 
-/* Tabelas HTML (ex.: Lista de candidatos custom) */
+/* =========================
+   TABELAS / LISTAS HTML
+   ========================= */
 table {
     width: 100%;
     border-collapse: collapse;
     background: #ffffffee !important;
     border-radius: 18px;
     overflow: hidden;
-    box-shadow: 0 10px 28px rgba(15,23,42,0.22);
+    box-shadow:
+        0 10px 28px rgba(15,23,42,0.22),
+        inset 0 0 18px rgba(255,255,255,0.55);
 }
 table th, table td {
     padding: 10px 14px;
@@ -180,15 +252,19 @@ table tr:last-child td {
     border-bottom: none;
 }
 
-/* DataFrames (AG-Grid) – tema claro padrão */
+/* =========================
+   DATAFRAMES (caso ainda use)
+   ========================= */
 div[data-testid="stDataFrame"] {
     background: #ffffff !important;
     border-radius: 18px !important;
     padding: 0.45rem;
-    box-shadow: 0 10px 28px rgba(15,23,42,0.25);
+    box-shadow:
+        0 10px 28px rgba(15,23,42,0.25),
+        inset 0 0 18px rgba(255,255,255,0.55);
 }
 
-/* força claro dentro da grade */
+/* força modo claro no AG-Grid */
 div[data-testid="stDataFrame"] .ag-root-wrapper,
 div[data-testid="stDataFrame"] .ag-root,
 div[data-testid="stDataFrame"] .ag-header,
@@ -200,43 +276,15 @@ div[data-testid="stDataFrame"] .ag-header-cell {
     border-color: #e5e7eb !important;
 }
 
-/* ajusta variáveis de tema do AG-Grid (caso use) */
-div[data-testid="stDataFrame"] .ag-root-wrapper {
-    --ag-background-color: #f9fafb !important;
-    --ag-odd-row-background-color: #f3f4f6 !important;
-    --ag-header-background-color: #e5e7eb !important;
-    --ag-foreground-color: #0f172a !important;
-    --ag-data-color: #0f172a !important;
-    --ag-border-color: #e5e7eb !important;
-}
-
-/* header um pouco mais forte */
+/* header mais forte */
 div[data-testid="stDataFrame"] .ag-header-cell-label {
     color: #0f172a !important;
     font-weight: 600;
 }
 
 /* =========================
-   TABS (modo iOS)
+   ALERTAS
    ========================= */
-div[data-baseweb="tab-list"] {
-    background: rgba(226,232,240,0.9);
-    border-radius: 999px;
-    padding: 4px;
-}
-button[role="tab"] {
-    border-radius: 999px !important;
-    padding: 0.35rem 0.95rem !important;
-    color: #475569 !important;
-}
-button[role="tab"][aria-selected="true"] {
-    background: #ffffff !important;
-    color: #0f172a !important;
-    font-weight: 700 !important;
-    box-shadow: 0 4px 14px rgba(15,23,42,0.25);
-}
-
-/* Alertas */
 div[data-testid="stAlert"] {
     border-radius: 14px;
     background: #f9fafb !important;
