@@ -308,16 +308,24 @@ def main() -> None:
     inject_global_css()
 
     # Autenticação
-    username: Optional[str] = auth.run()
-    if not username:
-        # auth.run() já mostra tela de login se não autenticado
-        return
+    # auth.run() cuida de mostrar login / mensagem de logado.
+    # Ele pode não retornar nada, então NÃO podemos dar "return" aqui.
+    possible_username: Optional[str] = auth.run()
+
+    # Tenta descobrir o usuário a partir do retorno OU da session_state
+    username = (
+        possible_username
+        or st.session_state.get("usuario_logado")
+        or st.session_state.get("username")
+        or st.session_state.get("user")
+        or "Usuário"
+    )
 
     # Navegação principal
     section = render_main_nav()
     render_actions_row()
 
-    # Indicador textual do módulo atual (discreto)
+    # Mapeia o título do módulo atual (apenas texto)
     titulo_map = {
         "dashboard": "Dashboard Geral",
         "clientes": "Cadastro de Clientes",
@@ -336,13 +344,12 @@ def main() -> None:
     # Conteúdo da seção
     route_section(section)
 
-    # Badge de usuário no final da página
+    # Badge de usuário no canto inferior direito
     render_user_badge(username)
 
 
 if __name__ == "__main__":
     main()
-
 
 
 
