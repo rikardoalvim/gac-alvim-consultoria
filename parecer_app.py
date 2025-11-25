@@ -1,9 +1,10 @@
-# -*- coding: utf-8 -*-
+# ================================
 # GAC - Gerenciador Alvim Consultoria
+# Aplicação principal
+# ================================
 
 import os
 import sys
-
 import streamlit as st
 
 from modules import (
@@ -19,12 +20,14 @@ from modules import (
     hunting,
 )
 
-st.set_page_config(page_title="GAC - Gerenciador Alvim Consultoria",
-                   page_icon="🧩",
-                   layout="wide")
+# ============================================================
+# CONFIGURAÇÕES GERAIS
+# ============================================================
 
-st.title("🧩 GAC - Gerenciador Alvim Consultoria")
-
+st.set_page_config(
+    page_title="GAC - Gerenciador Alvim Consultoria",
+    layout="wide",
+)
 modulo = st.sidebar.radio(
     "Selecione o módulo:",
     [
