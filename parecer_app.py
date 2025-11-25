@@ -279,9 +279,10 @@ div[data-testid="stAlert"] {
 
 /* ============================================
    Tabelas HTML simples (listas) – candidatos, vagas, etc.
+   Aplica globalmente, pra garantir.
    ============================================ */
 
-.main .block-container table {
+table {
     width: 100%;
     border-collapse: collapse;
     background-color: #ffffff !important;
@@ -292,8 +293,8 @@ div[data-testid="stAlert"] {
         inset 0 0 12px rgba(255,255,255,0.65);
 }
 
-.main .block-container th,
-.main .block-container td {
+/* cabeçalho + células */
+th, td {
     background-color: #ffffff !important;
     color: #0f172a !important;
     padding: 10px 14px;
@@ -301,11 +302,13 @@ div[data-testid="stAlert"] {
     font-size: 0.95rem;
 }
 
-.main .block-container th {
+/* cabeçalho em negrito */
+th {
     font-weight: 700;
 }
 
-.main .block-container tr:last-child td {
+/* última linha sem borda embaixo */
+tr:last-child td {
     border-bottom: none;
 }
 
