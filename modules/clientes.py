@@ -1,24 +1,26 @@
 import streamlit as st
+
 from .core import carregar_clientes, registrar_cliente, LOG_CLIENTES
 
 
 def run():
     st.header("🏢 Cadastro de Clientes")
 
-    # ============================
     # CONTROLE DE MODO
-    # ============================
     if "clientes_modo" not in st.session_state:
         st.session_state["clientes_modo"] = "Listar"
 
-    col_a1, col_a2, col_a3 = st.columns(3)
-    with col_a1:
+    colA, colB, colC = st.columns(3)
+
+    with colA:
         if st.button("📋 Listar", use_container_width=True):
             st.session_state["clientes_modo"] = "Listar"
-    with col_a2:
+
+    with colB:
         if st.button("➕ Inserir", use_container_width=True):
             st.session_state["clientes_modo"] = "Inserir"
-    with col_a3:
+
+    with colC:
         if st.button("✏️ Editar", use_container_width=True):
             st.session_state["clientes_modo"] = "Editar"
 
@@ -26,7 +28,6 @@ def run():
     st.markdown(f"**Modo atual:** {modo}")
     st.markdown("---")
 
-    # Carrega clientes uma vez
     df = carregar_clientes()
 
     # ============================
@@ -41,38 +42,10 @@ def run():
 
         df_view = df.sort_values("id_cliente")
         st.dataframe(df_view, use_container_width=True)
-
-        # Detalhe opcional de um cliente
-        st.markdown("### 🔍 Detalhes do cliente")
-        opcoes = {
-            row["id_cliente"]: f"{row['id_cliente']} - {row['nome_cliente']}"
-            for _, row in df_view.iterrows()
-        }
-
-        id_sel = st.selectbox(
-            "Selecione para visualizar detalhes:",
-            options=list(opcoes.keys()),
-            format_func=lambda x: opcoes[x],
-            key="cliente_det_sel",
-        )
-
-        row_sel = df_view[df_view["id_cliente"] == id_sel].iloc[0]
-        st.markdown(
-            f"""
-            **Nome:** {row_sel['nome_cliente']}  
-            **Razão social:** {row_sel['razao_social']}  
-            **CNPJ:** {row_sel['cnpj']}  
-            **Cidade:** {row_sel['cidade']}  
-            **Contato principal:** {row_sel['contato_principal']}  
-            **Telefone:** {row_sel['telefone']}  
-            **E-mail:** {row_sel['email']}  
-            **Observações:** {row_sel['observacoes']}
-            """
-        )
         return
 
     # ============================
-    # MODO: INSERIR (NOVO CLIENTE)
+    # MODO: INSERIR
     # ============================
     if modo == "Inserir":
         st.subheader("➕ Novo cliente")
@@ -114,8 +87,8 @@ def run():
                 key="observacoes_novo",
             )
 
-        col_b1, col_b2 = st.columns([1, 1])
-        with col_b1:
+        colb1, colb2 = st.columns(2)
+        with colb1:
             if st.button("💾 Salvar cliente", key="btn_salvar_cliente_novo", use_container_width=True):
                 if not nome_cliente.strip():
                     st.error("Informe ao menos o nome do cliente.")
@@ -133,7 +106,7 @@ def run():
                     st.success(f"Cliente cadastrado com ID {novo_id}.")
                     st.session_state["clientes_modo"] = "Listar"
                     st.rerun()
-        with col_b2:
+        with colb2:
             if st.button("⬅ Voltar para lista", use_container_width=True):
                 st.session_state["clientes_modo"] = "Listar"
                 st.rerun()
@@ -151,6 +124,7 @@ def run():
             return
 
         df_view = df.sort_values("id_cliente")
+
         opcoes = {
             row["id_cliente"]: f"{row['id_cliente']} - {row['nome_cliente']}"
             for _, row in df_view.iterrows()
@@ -210,8 +184,8 @@ def run():
                 key=f"observacoes_edit_{id_sel}",
             )
 
-        col_c1, col_c2 = st.columns([1, 1])
-        with col_c1:
+        colc1, colc2 = st.columns(2)
+        with colc1:
             if st.button(
                 "💾 Salvar alterações do cliente selecionado",
                 key=f"btn_salvar_cliente_edit_{id_sel}",
@@ -235,9 +209,11 @@ def run():
                     st.success("Cliente atualizado com sucesso!")
                     st.session_state["clientes_modo"] = "Listar"
                     st.rerun()
-        with col_c2:
-            if st.button("⬅ Voltar para lista", use_container_width=True):
+        with colc2:
+            if st.button("⬅ Voltar para lista", use_container_width=True, key="btn_voltar_cliente_edit"):
                 st.session_state["clientes_modo"] = "Listar"
                 st.rerun()
+
+        return
 
 
