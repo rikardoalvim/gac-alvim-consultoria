@@ -45,7 +45,7 @@ def inject_global_css() -> None:
             display: none !important;
         }
 
-        /* Deixa o container principal mais largo */
+        /* Container principal mais largo */
         .block-container {
             padding-top: 1.3rem;
             padding-left: 2.5rem;
@@ -75,11 +75,11 @@ def inject_global_css() -> None:
             flex-wrap: wrap;
         }
 
-        /* Botões em estilo “chip” (nav + ações) */
+        /* Botões em estilo “chip” (nav + geral) */
         .stButton>button {
             border-radius: 999px !important;
             border: 1px solid rgba(255, 255, 255, 0.7) !important;
-            padding: 0.35rem 1.15rem !important;
+            padding: 0.40rem 1.15rem !important;
             font-size: 0.90rem !important;
             font-weight: 600 !important;
             color: #111827 !important;
@@ -105,15 +105,6 @@ def inject_global_css() -> None:
         .nav-active>button {
             border-color: rgba(244, 114, 182, 0.8) !important;
             box-shadow: 0 18px 40px rgba(236, 72, 153, 0.40) !important;
-        }
-
-        /* Linha de ações abaixo do menu (Parecer / Sair) */
-        .glass-actions-row {
-            margin-top: 0.35rem;
-            display: flex;
-            justify-content: flex-start;
-            gap: 0.75rem;
-            flex-wrap: wrap;
         }
 
         /* Badge de usuário no canto inferior direito */
@@ -189,7 +180,6 @@ def inject_global_css() -> None:
         input, textarea {
             border-radius: 18px !important;
         }
-
         </style>
         """,
         unsafe_allow_html=True,
@@ -197,67 +187,155 @@ def inject_global_css() -> None:
 
 
 # ---------------------------------------------------------
-# NAVEGAÇÃO PRINCIPAL
+# NAVEGAÇÃO HIERÁRQUICA
 # ---------------------------------------------------------
-def render_main_nav() -> str:
-    """Desenha o menu superior (Dashboard, Clientes, etc.) e retorna a seção atual."""
-    if "main_section" not in st.session_state:
-        st.session_state["main_section"] = "candidatos"
+def ensure_nav_state() -> None:
+    if "nav_mode" not in st.session_state:
+        st.session_state["nav_mode"] = "main"  # main, rs, sistemas, financeiro
+    if "section" not in st.session_state:
+        st.session_state["section"] = "dashboard"
 
-    current = st.session_state["main_section"]
 
-    nav_items = [
-        ("dashboard", "Dashboard", "📊"),
-        ("clientes", "Clientes", "🏙️"),
-        ("candidatos", "Candidatos", "👤"),
-        ("vagas", "Vagas", "🧩"),
-        ("pipeline", "Pipeline", "📌"),
-        ("acessos", "Acessos", "🔐"),
-        ("financeiro", "Financeiro", "💰"),
-    ]
+def render_navigation() -> str:
+    """
+    Desenha o menu superior hierárquico e atualiza:
+    - st.session_state["nav_mode"]
+    - st.session_state["section"]
+    Retorna a seção atual.
+    """
+    ensure_nav_state()
+    mode = st.session_state["nav_mode"]
+    section = st.session_state["section"]
 
     st.markdown('<div class="main-nav-wrapper"><div class="main-nav-row">', unsafe_allow_html=True)
-    cols = st.columns(len(nav_items))
 
-    for col, (key, label, icon) in zip(cols, nav_items):
-        btn_key = f"nav_{key}"
-        active_class = " nav-active" if key == current else ""
-        with col:
-            st.markdown(f'<div class="stButton{active_class}">', unsafe_allow_html=True)
-            clicked = st.button(f"{icon} {label}", key=btn_key, use_container_width=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-            if clicked:
-                st.session_state["main_section"] = key
-                current = key
+    # ----------------- MENU PRINCIPAL -----------------
+    if mode == "main":
+        items = [
+            ("dashboard", "Dashboard", "📊"),
+            ("rs", "R&S", "🤝"),
+            ("sistemas", "Sistemas", "🖥️"),
+            ("financeiro", "Financeiro", "💰"),
+        ]
+        cols = st.columns(len(items))
+        for col, (key, label, icon) in zip(cols, items):
+            is_active = (section == "dashboard" and key == "dashboard")
+            btn_key = f"nav_main_{key}"
+            with col:
+                st.markdown(
+                    f'<div class="stButton{" nav-active" if is_active else ""}">',
+                    unsafe_allow_html=True,
+                )
+                clicked = st.button(f"{icon} {label}", key=btn_key, use_container_width=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+
+                if clicked:
+                    if key == "dashboard":
+                        st.session_state["nav_mode"] = "main"
+                        st.session_state["section"] = "dashboard"
+                    elif key == "rs":
+                        st.session_state["nav_mode"] = "rs"
+                        st.session_state["section"] = "candidatos"
+                    elif key == "sistemas":
+                        st.session_state["nav_mode"] = "sistemas"
+                        st.session_state["section"] = "acessos"
+                    elif key == "financeiro":
+                        st.session_state["nav_mode"] = "financeiro"
+                        st.session_state["section"] = "financeiro"
+                    mode = st.session_state["nav_mode"]
+                    section = st.session_state["section"]
+
+    # ----------------- MENU R&S -----------------
+    elif mode == "rs":
+        items = [
+            ("back", "Voltar", "⬅️"),
+            ("cadastros", "Cadastros", "📁"),
+            ("candidatos", "Candidatos", "👤"),
+            ("vagas", "Vagas", "🧩"),
+            ("pipeline", "Pipeline", "📌"),
+            ("parecer", "Parecer", "📄"),
+        ]
+        cols = st.columns(len(items))
+        for col, (key, label, icon) in zip(cols, items):
+            is_active = (section == key and key != "back")
+            btn_key = f"nav_rs_{key}"
+            with col:
+                st.markdown(
+                    f'<div class="stButton{" nav-active" if is_active else ""}">',
+                    unsafe_allow_html=True,
+                )
+                clicked = st.button(f"{icon} {label}", key=btn_key, use_container_width=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+                if clicked:
+                    if key == "back":
+                        st.session_state["nav_mode"] = "main"
+                        st.session_state["section"] = "dashboard"
+                    else:
+                        st.session_state["section"] = key
+                    mode = st.session_state["nav_mode"]
+                    section = st.session_state["section"]
+
+    # ----------------- MENU SISTEMAS -----------------
+    elif mode == "sistemas":
+        items = [
+            ("back", "Voltar", "⬅️"),
+            ("acessos", "Acessos", "🔐"),
+            ("chamados", "Chamados", "📨"),
+        ]
+        cols = st.columns(len(items))
+        for col, (key, label, icon) in zip(cols, items):
+            is_active = (section == key and key != "back")
+            btn_key = f"nav_sis_{key}"
+            with col:
+                st.markdown(
+                    f'<div class="stButton{" nav-active" if is_active else ""}">',
+                    unsafe_allow_html=True,
+                )
+                clicked = st.button(f"{icon} {label}", key=btn_key, use_container_width=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+                if clicked:
+                    if key == "back":
+                        st.session_state["nav_mode"] = "main"
+                        st.session_state["section"] = "dashboard"
+                    else:
+                        st.session_state["section"] = key
+                    mode = st.session_state["nav_mode"]
+                    section = st.session_state["section"]
+
+    # ----------------- MENU FINANCEIRO -----------------
+    elif mode == "financeiro":
+        items = [
+            ("back", "Voltar", "⬅️"),
+            ("financeiro", "Financeiro", "💰"),
+        ]
+        cols = st.columns(len(items))
+        for col, (key, label, icon) in zip(cols, items):
+            is_active = (section == key and key != "back")
+            btn_key = f"nav_fin_{key}"
+            with col:
+                st.markdown(
+                    f'<div class="stButton{" nav-active" if is_active else ""}">',
+                    unsafe_allow_html=True,
+                )
+                clicked = st.button(f"{icon} {label}", key=btn_key, use_container_width=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+                if clicked:
+                    if key == "back":
+                        st.session_state["nav_mode"] = "main"
+                        st.session_state["section"] = "dashboard"
+                    else:
+                        st.session_state["section"] = key
+                    mode = st.session_state["nav_mode"]
+                    section = st.session_state["section"]
 
     st.markdown("</div></div>", unsafe_allow_html=True)
-    return current
+    return section
 
 
-def render_actions_row() -> None:
-    """Linha logo abaixo do menu com atalho para Parecer e botão de Sair."""
-
-    st.markdown('<div class="glass-actions-row">', unsafe_allow_html=True)
-    col1, col2 = st.columns([1, 0.5])
-
-    with col1:
-        if st.button("📄 Parecer", key="action_parecer", use_container_width=True):
-            st.session_state["main_section"] = "parecer"
-
-    with col2:
-        if st.button("⏏ Sair", key="action_logout", use_container_width=True):
-            # Logout bem simples: limpa sessão e recarrega
-            keys = list(st.session_state.keys())
-            for k in keys:
-                if k != "_is_running_with_streamlit":
-                    del st.session_state[k]
-            st.experimental_rerun()
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-
+# ---------------------------------------------------------
+# USER BADGE (canto inferior direito)
+# ---------------------------------------------------------
 def render_user_badge(username: str) -> None:
-    """Mostra o usuário logado no canto inferior direito (badge pequeno)."""
     st.markdown(
         f"""
         <div class="user-badge">
@@ -270,7 +348,7 @@ def render_user_badge(username: str) -> None:
 
 
 # ---------------------------------------------------------
-# ROTEADOR DE SEÇÕES
+# ROTEADOR DE SEÇÕES (chama os módulos)
 # ---------------------------------------------------------
 def route_section(section: str) -> None:
     if section == "dashboard":
@@ -278,7 +356,8 @@ def route_section(section: str) -> None:
             dashboard.run()
         except Exception:
             st.info("Dashboard ainda não configurado.")
-    elif section == "clientes":
+    elif section == "cadastros":
+        # Cadastros = módulo de clientes
         clientes.run()
     elif section == "candidatos":
         candidatos.run()
@@ -286,13 +365,16 @@ def route_section(section: str) -> None:
         vagas.run()
     elif section == "pipeline":
         pipeline_mod.run()
-    elif section == "acessos":
-        acessos.run()
-    elif section == "financeiro":
-        financeiro.run()
     elif section == "parecer":
         parecer_mod.run()
+    elif section == "acessos":
+        acessos.run()
+    elif section == "chamados":
+        st.info("Módulo de chamados ainda será desenvolvido.")
+    elif section == "financeiro":
+        financeiro.run()
     else:
+        # fallback
         candidatos.run()
 
 
@@ -308,11 +390,7 @@ def main() -> None:
     inject_global_css()
 
     # Autenticação
-    # auth.run() cuida de mostrar login / mensagem de logado.
-    # Ele pode não retornar nada, então NÃO podemos dar "return" aqui.
     possible_username: Optional[str] = auth.run()
-
-    # Tenta descobrir o usuário a partir do retorno OU da session_state
     username = (
         possible_username
         or st.session_state.get("usuario_logado")
@@ -321,31 +399,37 @@ def main() -> None:
         or "Usuário"
     )
 
-    # Navegação principal
-    section = render_main_nav()
-    render_actions_row()
+    ensure_nav_state()
 
-    # Mapeia o título do módulo atual (apenas texto)
+    # Render navegação hierárquica
+    section = render_navigation()
+
+    # Texto do módulo atual (apenas informativo)
     titulo_map = {
         "dashboard": "Dashboard Geral",
-        "clientes": "Cadastro de Clientes",
+        "cadastros": "Cadastros Gerais",
         "candidatos": "Cadastro de Candidatos",
         "vagas": "Gestão de Vagas",
         "pipeline": "Pipeline de Candidatos",
-        "acessos": "Gerenciador de Acessos",
-        "financeiro": "Financeiro",
         "parecer": "Parecer de Triagem",
+        "acessos": "Gerenciador de Acessos",
+        "chamados": "Chamados (em desenvolvimento)",
+        "financeiro": "Financeiro",
     }
     titulo_atual = titulo_map.get(section, "Módulo atual")
-
     st.markdown(f"**Módulo atual:** {titulo_atual}")
     st.markdown("---")
 
     # Conteúdo da seção
     route_section(section)
 
-    # Badge de usuário no canto inferior direito
+    # Badge com usuário
     render_user_badge(username)
+
+
+if __name__ == "__main__":
+    main()
+
 
 
 if __name__ == "__main__":
