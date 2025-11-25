@@ -154,7 +154,7 @@ GLOBAL_CSS = """
 
 </style>
 """
-st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
+
 
 # ============================================================
 # CONFIGURACOES GERAIS
