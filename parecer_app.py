@@ -276,6 +276,39 @@ div[data-testid="stAlert"] {
     border-radius: 14px;
     background: #f9fafb !important;
 }
+
+/* ============================================
+   Tabelas HTML simples (listas) – candidatos, vagas, etc.
+   ============================================ */
+
+.main .block-container table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #ffffff !important;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow:
+        0 10px 28px rgba(15,23,42,0.18),
+        inset 0 0 12px rgba(255,255,255,0.65);
+}
+
+.main .block-container th,
+.main .block-container td {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    padding: 10px 14px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.95rem;
+}
+
+.main .block-container th {
+    font-weight: 700;
+}
+
+.main .block-container tr:last-child td {
+    border-bottom: none;
+}
+
 </style>
 '''
 
@@ -363,5 +396,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
