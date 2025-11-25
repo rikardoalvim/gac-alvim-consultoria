@@ -16,6 +16,73 @@ from .core import (
 )
 
 # =============================================
+# CSS EXTRA – DROP-DOWNS / MULTISELECT “LIQUID GLASS”
+# =============================================
+
+SELECT_CSS = """
+<style>
+/* container geral do select/multiselect */
+.stSelectbox div[data-baseweb="select"],
+.stMultiSelect div[data-baseweb="select"] {
+    background: radial-gradient(circle at 10% 20%, rgba(255,255,255,0.90) 0%, rgba(248,250,252,0.80) 40%, rgba(241,245,249,0.80) 100%) !important;
+    border-radius: 999px !important;
+    box-shadow: 0 18px 45px rgba(15,23,42,0.25) !important;
+    border: 1px solid rgba(148,163,184,0.4) !important;
+    backdrop-filter: blur(18px) saturate(130%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(130%) !important;
+}
+
+/* texto do valor selecionado */
+.stSelectbox div[data-baseweb="select"] span,
+.stMultiSelect div[data-baseweb="select"] span {
+    color: #0f172a !important;
+    font-weight: 500 !important;
+}
+
+/* placeholder */
+.stSelectbox div[data-baseweb="select"] span[data-baseweb="typo-label"],
+.stMultiSelect div[data-baseweb="select"] span[data-baseweb="typo-label"] {
+    color: rgba(15,23,42,0.65) !important;
+}
+
+/* menu suspenso (lista de opções) */
+.stSelectbox div[data-baseweb="select"] div[role="listbox"],
+.stMultiSelect div[data-baseweb="select"] div[role="listbox"] {
+    background: radial-gradient(circle at 0% 0%, rgba(15,23,42,0.98) 0%, rgba(30,64,175,0.92) 35%, rgba(59,130,246,0.90) 100%) !important;
+    color: #f9fafb !important;
+    border-radius: 24px !important;
+    box-shadow: 0 25px 60px rgba(15,23,42,0.55) !important;
+    border: 1px solid rgba(148,163,184,0.65) !important;
+    backdrop-filter: blur(22px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(140%) !important;
+}
+
+/* itens da lista */
+.stSelectbox div[data-baseweb="select"] div[role="option"],
+.stMultiSelect div[data-baseweb="select"] div[role="option"] {
+    color: #e5e7eb !important;
+}
+
+/* item focado/hover */
+.stSelectbox div[data-baseweb="select"] div[role="option"][aria-selected="true"],
+.stSelectbox div[data-baseweb="select"] div[role="option"]:hover,
+.stMultiSelect div[data-baseweb="select"] div[role="option"][aria-selected="true"],
+.stMultiSelect div[data-baseweb="select"] div[role="option"]:hover {
+    background: linear-gradient(120deg, rgba(248,250,252,0.18), rgba(248,250,252,0.05)) !important;
+    color: #f9fafb !important;
+}
+
+/* “chips” do multiselect */
+.stMultiSelect div[data-baseweb="tag"] {
+    background: rgba(15,23,42,0.06) !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(148,163,184,0.45) !important;
+}
+</style>
+"""
+
+
+# =============================================
 # FUNÇÕES UTILITÁRIAS
 # =============================================
 
@@ -94,6 +161,9 @@ def render_tabela_html(df, columns, headers):
 
 def run():
     st.header("🧩 Gestão de Vagas")
+
+    # aplica CSS especial dos selects
+    st.markdown(SELECT_CSS, unsafe_allow_html=True)
 
     # CONTROLE DE MODO
     if "vagas_modo" not in st.session_state:
@@ -398,7 +468,7 @@ Se tiver interesse, envie seu *currículo atualizado* ou fale comigo aqui! 🙂
         return
 
     # =========================================================
-    # MODO 5 – VÍNCULO VAGA x CANDIDATO
+    # MODO 5 – VÍNCULO VAGA x VÁRIOS CANDIDATOS
     # =========================================================
     if modo == "Vinculo":
         st.subheader("🔗 Vincular candidatos à vaga")
@@ -416,20 +486,25 @@ Se tiver interesse, envie seu *currículo atualizado* ou fale comigo aqui! 🙂
         }
 
         id_vaga_vinc = st.selectbox(
-            "Selecione a vaga:", list(opcoes_vinc.keys()), format_func=lambda x: opcoes_vinc[x]
+            "Selecione a vaga:",
+            list(opcoes_vinc.keys()),
+            format_func=lambda x: opcoes_vinc[x],
         )
 
+        # vínculos já existentes dessa vaga
         df_vinc = carregar_vaga_candidatos()
         if not df_vinc.empty:
             vinculados = df_vinc[df_vinc["id_vaga"] == str(id_vaga_vinc)]
         else:
-            vinculados = pd.DataFrame(columns=["id_vaga", "id_candidato", "data_vinculo", "observacao"])
+            vinculados = pd.DataFrame(
+                columns=["id_vaga", "id_candidato", "data_vinculo", "observacao"]
+            )
 
         ids_existentes = set(vinculados["id_candidato"].tolist())
         opcoes_candidatos = {str(r["id_candidato"]): r["nome"] for _, r in df_cand.iterrows()}
 
         selecionados = st.multiselect(
-            "Candidatos vinculados:",
+            "Candidatos vinculados a esta vaga:",
             list(opcoes_candidatos.keys()),
             default=list(ids_existentes),
             format_func=lambda x: opcoes_candidatos.get(x, x),
@@ -438,20 +513,27 @@ Se tiver interesse, envie seu *currículo atualizado* ou fale comigo aqui! 🙂
         if st.button("💾 Salvar vínculos", use_container_width=True):
             df_todos = carregar_vaga_candidatos()
             if not df_todos.empty:
+                # remove todos os vínculos dessa vaga e recria com a seleção atual
                 df_todos = df_todos[df_todos["id_vaga"] != str(id_vaga_vinc)]
 
             novos = []
             agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             for idc in selecionados:
-                novos.append({
-                    "id_vaga": str(id_vaga_vinc),
-                    "id_candidato": str(idc),
-                    "data_vinculo": agora,
-                    "observacao": "",
-                })
+                novos.append(
+                    {
+                        "id_vaga": str(id_vaga_vinc),
+                        "id_candidato": str(idc),
+                        "data_vinculo": agora,
+                        "observacao": "",
+                    }
+                )
 
             df_novos = pd.DataFrame(novos)
-            df_final = pd.concat([df_todos, df_novos], ignore_index=True) if not df_todos.empty else df_novos
+            df_final = (
+                pd.concat([df_todos, df_novos], ignore_index=True)
+                if not df_todos.empty
+                else df_novos
+            )
             salvar_vaga_candidatos(df_final)
             st.success("Vínculos atualizados!")
             st.rerun()
@@ -464,11 +546,15 @@ Se tiver interesse, envie seu *currículo atualizado* ou fale comigo aqui! 🙂
         if df_vinc_atual.empty:
             st.info("Nenhum candidato vinculado.")
         else:
-            df_show = df_vinc_atual.merge(
-                df_cand[["id_candidato", "nome", "telefone", "cidade"]],
-                on="id_candidato",
-                how="left",
-            ).fillna("").astype(str)
+            df_show = (
+                df_vinc_atual.merge(
+                    df_cand[["id_candidato", "nome", "telefone", "cidade"]],
+                    on="id_candidato",
+                    how="left",
+                )
+                .fillna("")
+                .astype(str)
+            )
 
             render_tabela_html(
                 df_show,
@@ -477,6 +563,7 @@ Se tiver interesse, envie seu *currículo atualizado* ou fale comigo aqui! 🙂
             )
 
         return
+
 
 
 
