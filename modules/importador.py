@@ -103,7 +103,6 @@ def run():
 
     # ============================================
     # 2) IMPORTAR A PARTIR DE UMA PASTA NO SERVIDOR
-    # (para uso local ou se você já tiver PDFs no filesystem do app)
     # ============================================
     st.subheader("2️⃣ Importar PDFs de uma pasta do servidor (opcional)")
 
@@ -151,9 +150,3 @@ def run():
                 st.error(f"Erro ao importar PDFs da pasta: {e}")
     else:
         st.info("Nenhum PDF novo listado na pasta do servidor (ou você ainda não clicou em 'Listar PDFs').")
-
-
-            st.session_state["pdfs_para_importar"] = []
-            st.success("Importação concluída! Verifique o Histórico e Pipeline.")
-        except Exception as e:
-            st.error(f"Erro ao importar PDFs: {e}")
