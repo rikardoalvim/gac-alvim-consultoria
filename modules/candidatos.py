@@ -2,6 +2,7 @@ import os
 import re
 from datetime import datetime
 
+import pandas as pd
 import streamlit as st
 
 from .core import (
@@ -13,94 +14,117 @@ from .core import (
 )
 
 
+def render_tabela_html(df, columns, headers):
+    """Renderiza DataFrame como tabela HTML no estilo glass."""
+    if df.empty:
+        st.info("Nenhum candidato cadastrado ainda.")
+        return
+
+    html = ["<table>"]
+    # Cabeçalho
+    html.append("<thead><tr>")
+    for h in headers:
+        html.append(f"<th>{h}</th>")
+    html.append("</tr></thead>")
+
+    # Corpo
+    html.append("<tbody>")
+    for _, row in df[columns].iterrows():
+        html.append("<tr>")
+        for col in columns:
+            valor = row[col]
+            html.append(f"<td>{valor}</td>")
+        html.append("</tr>")
+    html.append("</tbody></table>")
+
+    st.markdown("".join(html), unsafe_allow_html=True)
+
+
 def run():
     st.header("👤 Cadastro de Candidatos")
 
-    # CONTROLE DE MODO
-    if "candidatos_modo" not in st.session_state:
-        st.session_state["candidatos_modo"] = "Listar"
+    # Garante diretório de CV
+    os.makedirs(CV_DIR, exist_ok=True)
 
-    colA, colB, colC = st.columns(3)
+    # Controle de modo
+    if "cand_modo" not in st.session_state:
+        st.session_state["cand_modo"] = "Listar"
+
+    st.markdown('<div class="glass-actions-row">', unsafe_allow_html=True)
+    colA, colB, colC, colD = st.columns(4)
     with colA:
-        if st.button("📋 Listar", use_container_width=True):
-            st.session_state["candidatos_modo"] = "Listar"
+        if st.button("📋 Listar", use_container_width=True, key="cand_listar"):
+            st.session_state["cand_modo"] = "Listar"
     with colB:
-        if st.button("➕ Inserir", use_container_width=True):
-            st.session_state["candidatos_modo"] = "Inserir"
+        if st.button("➕ Novo", use_container_width=True, key="cand_novo"):
+            st.session_state["cand_modo"] = "Novo"
     with colC:
-        if st.button("✏️ Editar", use_container_width=True):
-            st.session_state["candidatos_modo"] = "Editar"
+        if st.button("✏️ Editar", use_container_width=True, key="cand_editar"):
+            st.session_state["cand_modo"] = "Editar"
+    with colD:
+        if st.button("📲 WhatsApp", use_container_width=True, key="cand_whats"):
+            st.session_state["cand_modo"] = "Whats"
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    modo = st.session_state["candidatos_modo"]
+    modo = st.session_state["cand_modo"]
     st.markdown(f"**Modo atual:** {modo}")
     st.markdown("---")
 
-    df = carregar_candidatos()
-
-    # ============================
-    # MODO: LISTAR
-    # ============================
+    # =========================
+    # MODO 1 – LISTAR
+    # =========================
     if modo == "Listar":
-        st.subheader("📋 Lista de candidatos")
-
+        df = carregar_candidatos()
         if df.empty:
             st.info("Nenhum candidato cadastrado ainda.")
             return
 
-        df_view = df.sort_values("id_candidato")
-
-        # Monta tabela com botão/link WhatsApp
-        def make_whats_link(tel):
-            link = montar_link_whatsapp(tel)
-            if not link:
-                return ""
-            return f'<a href="{link}" target="_blank">💬 WhatsApp</a>'
-
-        df_view = df_view.copy()
-        df_view["WhatsApp"] = df_view["telefone"].apply(make_whats_link)
-
-        df_show = df_view[
-            ["id_candidato", "nome", "telefone", "cidade", "cargo_pretendido", "WhatsApp"]
-        ].rename(
-            columns={
-                "id_candidato": "ID",
-                "nome": "Nome",
-                "telefone": "Telefone",
-                "cidade": "Cidade",
-                "cargo_pretendido": "Cargo",
-            }
+        df_view = df.copy().fillna("")
+        # Flag CV
+        if "cv_arquivo" not in df_view.columns:
+            df_view["cv_arquivo"] = ""
+        df_view["CV"] = df_view["cv_arquivo"].apply(
+            lambda x: "📎 Sim" if str(x).strip() else "—"
         )
 
-        st.write(
-            df_show.to_html(index=False, escape=False),
-            unsafe_allow_html=True,
-        )
+        # Converte para string
+        df_view = df_view.astype(str)
 
+        render_tabela_html(
+            df_view,
+            columns=["id_candidato", "nome", "idade", "telefone", "cidade", "cargo_pretendido", "CV"],
+            headers=["ID", "Nome", "Idade", "Telefone", "Cidade", "Cargo pretendido", "CV"],
+        )
         return
 
-    # ============================
-    # MODO: INSERIR
-    # ============================
-    if modo == "Inserir":
+    # =========================
+    # MODO 2 – NOVO
+    # =========================
+    if modo == "Novo":
         st.subheader("➕ Novo candidato")
 
         col1, col2 = st.columns(2)
         with col1:
-            nome = st.text_input("Nome completo do candidato", key="nome_novo")
-            idade = st.text_input("Idade", key="idade_novo")
-            telefone = st.text_input("Telefone (com DDD)", key="telefone_novo")
+            nome = st.text_input("Nome completo do candidato")
+            idade = st.text_input("Idade")
+            telefone = st.text_input("Telefone (com DDD)")
         with col2:
-            cidade = st.text_input("Cidade / UF", key="cidade_novo")
-            cargo_pret = st.text_input("Cargo pretendido", key="cargo_pret_novo")
+            cidade = st.text_input("Cidade / UF")
+            cargo_pret = st.text_input("Cargo pretendido")
             data_cad = st.date_input(
-                "Data do cadastro",
-                value=datetime.today(),
-                key="data_cad_novo",
+                "Data do cadastro", value=datetime.today()
             ).strftime("%Y-%m-%d")
 
-        colb1, colb2 = st.columns(2)
+        # Upload de CV já no cadastro
+        uploaded_cv_new = st.file_uploader(
+            "📎 Anexar CV (PDF) – opcional",
+            type=["pdf"],
+            key="cand_novo_cv",
+        )
+
+        colb1, colb2 = st.columns([1, 1])
         with colb1:
-            if st.button("💾 Salvar candidato", key="btn_salvar_cand_novo", use_container_width=True):
+            if st.button("💾 Salvar candidato", use_container_width=True, key="btn_salvar_cand_novo"):
                 if not nome.strip():
                     st.error("Informe o nome do candidato.")
                 else:
@@ -112,28 +136,48 @@ def run():
                         cargo_pret.strip(),
                         data_cad,
                     )
+                    # Se CV foi anexado, grava no disco e atualiza CSV
+                    if uploaded_cv_new is not None:
+                        base_nome = re.sub(r"\W+", "_", nome.strip()) or "candidato"
+                        cv_nome = f"cv_{novo_id}_{base_nome}.pdf"
+                        cv_path = os.path.join(CV_DIR, cv_nome)
+                        with open(cv_path, "wb") as f:
+                            f.write(uploaded_cv_new.read())
+
+                        df_all = carregar_candidatos()
+                        mask = df_all["id_candidato"] == str(novo_id)
+                        if "cv_arquivo" not in df_all.columns:
+                            df_all["cv_arquivo"] = ""
+                        df_all.loc[mask, "cv_arquivo"] = cv_path
+                        df_all.to_csv(LOG_CAND, sep=";", index=False, encoding="utf-8")
+
                     st.success(f"Candidato cadastrado com ID {novo_id}.")
-                    st.session_state["candidatos_modo"] = "Listar"
-                    st.rerun()
+                    st.session_state["cand_modo"] = "Listar"
+                    st.experimental_rerun()
         with colb2:
-            if st.button("⬅ Voltar para lista", use_container_width=True):
-                st.session_state["candidatos_modo"] = "Listar"
-                st.rerun()
+            if st.button("⬅ Voltar para lista", use_container_width=True, key="btn_voltar_cand_novo"):
+                st.session_state["cand_modo"] = "Listar"
+                st.experimental_rerun()
 
         return
 
-    # ============================
-    # MODO: EDITAR
-    # ============================
+    # =========================
+    # MODO 3 – EDITAR
+    # =========================
     if modo == "Editar":
         st.subheader("✏️ Editar candidato")
 
+        df = carregar_candidatos()
         if df.empty:
-            st.info("Nenhum candidato cadastrado para editar.")
+            st.info("Nenhum candidato para editar.")
             return
 
-        df_view = df.sort_values("id_candidato")
-        opcoes = {int(row["id_candidato"]): row["nome"] for _, row in df_view.iterrows()}
+        df = df.fillna("")
+
+        opcoes = {
+            int(row["id_candidato"]): f"{row['id_candidato']} - {row['nome']}"
+            for _, row in df.iterrows()
+        }
 
         id_sel = st.selectbox(
             "Selecione o candidato:",
@@ -142,35 +186,26 @@ def run():
             key="cand_edit_sel",
         )
 
-        row = df_view[df_view["id_candidato"] == str(id_sel)].iloc[0]
+        row_sel = df[df["id_candidato"] == str(id_sel)].iloc[0]
 
-        colf1, colf2 = st.columns(2)
-        with colf1:
-            nome_f = st.text_input("Nome", value=row["nome"], key=f"nome_{id_sel}")
-            idade_f = st.text_input("Idade", value=str(row["idade"]), key=f"idade_{id_sel}")
-            tel_f = st.text_input("Telefone", value=row["telefone"], key=f"tel_{id_sel}")
-            cidade_f = st.text_input("Cidade", value=row["cidade"], key=f"cidade_{id_sel}")
-        with colf2:
-            cargo_f = st.text_input(
-                "Cargo pretendido",
-                value=row["cargo_pretendido"],
-                key=f"cargo_pret_{id_sel}",
-            )
+        col1, col2 = st.columns(2)
+        with col1:
+            nome_f = st.text_input("Nome", value=row_sel["nome"])
+            idade_f = st.text_input("Idade", value=str(row_sel.get("idade", "")))
+            tel_f = st.text_input("Telefone", value=row_sel.get("telefone", ""))
+            cidade_f = st.text_input("Cidade", value=row_sel.get("cidade", ""))
+        with col2:
+            cargo_f = st.text_input("Cargo pretendido", value=row_sel.get("cargo_pretendido", ""))
             data_cad_f = st.text_input(
                 "Data cadastro (YYYY-MM-DD)",
-                value=row["data_cadastro"],
-                key=f"data_cad_{id_sel}",
+                value=row_sel.get("data_cadastro", ""),
             )
-            linkedin_f = st.text_input(
-                "LinkedIn",
-                value=row.get("linkedin", ""),
-                key=f"linkedin_{id_sel}",
-            )
+            linkedin_f = st.text_input("LinkedIn", value=row_sel.get("linkedin", ""))
 
         st.markdown("**Currículo (CV) do candidato**")
-        cv_atual = row.get("cv_arquivo", "") or ""
+        cv_atual = row_sel.get("cv_arquivo", "") or ""
         if cv_atual and os.path.exists(cv_atual):
-            st.write(f"Arquivo atual: `{cv_atual}`")
+            st.write(f"Arquivo atual: `{os.path.basename(cv_atual)}`")
             with open(cv_atual, "rb") as f:
                 cv_bytes = f.read()
             st.download_button(
@@ -178,7 +213,7 @@ def run():
                 data=cv_bytes,
                 file_name=os.path.basename(cv_atual),
                 mime="application/pdf",
-                key=f"cv_down_edit_{id_sel}",
+                key=f"cand_cv_down_{id_sel}",
             )
         else:
             st.write("Nenhum CV anexado.")
@@ -186,28 +221,24 @@ def run():
         uploaded_cv = st.file_uploader(
             "📎 Anexar/atualizar CV (PDF)",
             type=["pdf"],
-            key=f"cv_up_{id_sel}",
+            key=f"cand_cv_up_{id_sel}",
         )
 
-        colc1, colc2 = st.columns(2)
-        with colc1:
-            if st.button(
-                "💾 Salvar alterações",
-                key=f"btn_salvar_{id_sel}",
-                use_container_width=True,
-            ):
-                df_edit = carregar_candidatos()
-                m2 = df_edit["id_candidato"] == str(id_sel)
-                if not m2.any():
+        colb1, colb2 = st.columns([1, 1])
+        with colb1:
+            if st.button("💾 Salvar alterações", use_container_width=True, key="btn_salvar_cand_edit"):
+                df_all = carregar_candidatos()
+                mask = df_all["id_candidato"] == str(id_sel)
+                if not mask.any():
                     st.error("Candidato não encontrado para salvar.")
                 else:
-                    df_edit.loc[m2, "nome"] = nome_f
-                    df_edit.loc[m2, "idade"] = idade_f
-                    df_edit.loc[m2, "telefone"] = tel_f
-                    df_edit.loc[m2, "cidade"] = cidade_f
-                    df_edit.loc[m2, "cargo_pretendido"] = cargo_f
-                    df_edit.loc[m2, "data_cadastro"] = data_cad_f
-                    df_edit.loc[m2, "linkedin"] = linkedin_f
+                    df_all.loc[mask, "nome"] = nome_f
+                    df_all.loc[mask, "idade"] = idade_f
+                    df_all.loc[mask, "telefone"] = tel_f
+                    df_all.loc[mask, "cidade"] = cidade_f
+                    df_all.loc[mask, "cargo_pretendido"] = cargo_f
+                    df_all.loc[mask, "data_cadastro"] = data_cad_f
+                    df_all.loc[mask, "linkedin"] = linkedin_f
 
                     if uploaded_cv is not None:
                         base_nome = re.sub(r"\W+", "_", nome_f.strip()) or "candidato"
@@ -215,15 +246,55 @@ def run():
                         cv_path = os.path.join(CV_DIR, cv_nome)
                         with open(cv_path, "wb") as f:
                             f.write(uploaded_cv.read())
-                        df_edit.loc[m2, "cv_arquivo"] = cv_path
+                        if "cv_arquivo" not in df_all.columns:
+                            df_all["cv_arquivo"] = ""
+                        df_all.loc[mask, "cv_arquivo"] = cv_path
 
-                    df_edit.to_csv(LOG_CAND, sep=";", index=False, encoding="utf-8")
-                    st.success("Ficha atualizada com sucesso!")
-                    st.session_state["candidatos_modo"] = "Listar"
-                    st.rerun()
-        with colc2:
-            if st.button("⬅ Voltar para lista", use_container_width=True):
-                st.session_state["candidatos_modo"] = "Listar"
-                st.rerun()
+                    try:
+                        df_all.to_csv(LOG_CAND, sep=";", index=False, encoding="utf-8")
+                        st.success("Ficha atualizada com sucesso!")
+                        st.session_state["cand_modo"] = "Listar"
+                        st.experimental_rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao salvar ficha: {e}")
+        with colb2:
+            if st.button("⬅ Voltar para lista", use_container_width=True, key="btn_voltar_cand_edit"):
+                st.session_state["cand_modo"] = "Listar"
+                st.experimental_rerun()
 
         return
+
+    # =========================
+    # MODO 4 – WHATSAPP
+    # =========================
+    if modo == "Whats":
+        st.subheader("📲 Contato rápido via WhatsApp")
+
+        df = carregar_candidatos()
+        if df.empty:
+            st.info("Nenhum candidato cadastrado ainda.")
+            return
+
+        df = df.fillna("")
+        opcoes2 = {
+            int(row["id_candidato"]): row["nome"]
+            for _, row in df.iterrows()
+        }
+
+        id_sel2 = st.selectbox(
+            "Selecione o candidato:",
+            options=list(opcoes2.keys()),
+            format_func=lambda x: opcoes2[x],
+            key="cand_whats_sel",
+        )
+        row2 = df[df["id_candidato"] == str(id_sel2)].iloc[0]
+        telefone = row2.get("telefone", "")
+        st.write(f"**Telefone:** {telefone}  |  **Cidade:** {row2.get('cidade', '')}")
+        link = montar_link_whatsapp(telefone)
+        if not link:
+            st.warning("Telefone inválido ou não informado.")
+        else:
+            st.markdown(f"[💬 Abrir conversa no WhatsApp]({link})")
+
+        return
+
