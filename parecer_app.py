@@ -31,138 +31,164 @@ st.set_page_config(
 )
 
 # ============================================================
-# CSS GLOBAL – ESTILO iOS 18 / GLASSMORPHISM
+# CSS GLOBAL – ESTILO iOS / LIQUID GLASS + LEGÍVEL
 # ============================================================
 
 GLOBAL_CSS = """
 <style>
 
-/* Fundo geral com gradiente estilo iOS */
+/* Fundo geral estilo iOS */
 html, body, [data-testid="stAppViewContainer"] {
-    background: radial-gradient(circle at 20% 20%, #e3e9f8 0%, #f5f7fa 50%, #e1e7f0 100%) !important;
+    background: radial-gradient(circle at 20% 20%, #e5edff 0%, #f5f7fb 45%, #dde6f3 100%) !important;
 }
 
-/* Remove qualquer fundo sólido do container root */
+/* Container raiz sem fundo sólido extra */
 [data-testid="stAppViewContainer"] {
     background-color: transparent !important;
 }
 
-/* Container principal como card de vidro */
+/* Conteúdo principal: card claro com leve glass */
 .main .block-container {
-    background: rgba(255,255,255,0.55);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-radius: 24px;
+    background: rgba(255,255,255,0.96);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    border-radius: 22px;
     padding: 2rem 3rem;
     margin-top: 1.5rem;
     margin-bottom: 2.5rem;
-    box-shadow: 0 10px 40px rgba(15,23,42,0.18);
+    box-shadow: 0 10px 32px rgba(15,23,42,0.15);
 }
 
-/* SIDEBAR em glass */
+/* SIDEBAR – vidro escuro suave */
 section[data-testid="stSidebar"] {
-    background: rgba(15,23,42,0.35) !important;
-    backdrop-filter: blur(24px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(15,23,42,0.9)) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border-right: 1px solid rgba(148,163,184,0.4);
 }
 section[data-testid="stSidebar"] * {
     color: #e5e7eb !important;
 }
 
-/* RADIO da sidebar mais bonitinho */
-section[data-testid="stSidebar"] .stRadio label {
-    font-weight: 600;
+/* Títulos e textos principais */
+h1, h2, h3, h4 {
+    color: #0f172a !important;
+    letter-spacing: -0.03em;
+}
+.stMarkdown p {
+    color: #1e293b !important;
 }
 
-/* BOTÕES estilo iOS, com animação */
+/* =========================
+   BOTÕES (iOS style)
+   ========================= */
 .stButton > button {
-    background: rgba(255,255,255,0.65);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border-radius: 14px;
-    padding: 0.55rem 1.25rem;
-    color: #111827 !important;
-    border: 1px solid rgba(209,213,219,0.8);
-    box-shadow: 0 4px 14px rgba(15,23,42,0.18);
-    transition: all 0.22s ease-out;
+    background: linear-gradient(135deg, #f9fafb, #e5edff);
+    color: #0f172a !important;
+    padding: 0.6rem 1.25rem;
+    border-radius: 999px;
+    border: 1px solid rgba(148,163,184,0.8);
+    box-shadow: 0 6px 18px rgba(15,23,42,0.18);
     font-weight: 600;
-    font-size: 0.92rem;
+    font-size: 0.94rem;
+    transition: all 0.18s ease-out;
 }
 .stButton > button:hover {
-    background: rgba(255,255,255,0.9);
+    background: linear-gradient(135deg, #eef2ff, #e0e7ff);
     transform: translateY(-2px) scale(1.01);
     box-shadow: 0 10px 26px rgba(15,23,42,0.24);
 }
 
-/* INPUTS / SELECTS – caixas claras com texto escuro (iOS) */
+/* =========================
+   INPUTS / TEXTAREAS / SELECTS
+   ========================= */
+
+/* Caixas de texto iOS: brancas, borda azul clara, texto escuro */
+.stTextInput input,
+.stTextArea textarea {
+    background-color: #f9fafb !important;
+    color: #0f172a !important;
+    border-radius: 14px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: inset 0 0 0 1px rgba(148,163,184,0.35);
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+}
+
+/* Wrapper dos inputs (para remover contorno preto grosso) */
+div[data-baseweb="input"] > div,
+div[data-baseweb="textarea"] > div {
+    background-color: transparent !important;
+    border-radius: 14px !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Selectbox */
+.stSelectbox > div > div {
+    background-color: #f9fafb !important;
+    border-radius: 14px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: inset 0 0 0 1px rgba(148,163,184,0.35);
+}
+
+/* Foco nos campos – borda azul estilo iOS */
+.stTextInput input:focus,
+.stTextArea textarea:focus,
+.stSelectbox > div > div:focus-within {
+    outline: none !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 2px rgba(59,130,246,0.35) !important;
+}
+
+/* Texto interno sempre escuro */
 input, textarea, select {
     color: #0f172a !important;
 }
 
-/* wrappers dos inputs do Streamlit (BaseWeb) */
-div[data-baseweb="input"] > div,
-div[data-baseweb="select"] > div,
-div[data-baseweb="textarea"] > div {
-    background: rgba(255,255,255,0.85) !important;
-    backdrop-filter: blur(14px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
-    border-radius: 14px !important;
-    border: 1px solid rgba(148,163,184,0.8) !important;
-    box-shadow: 0 2px 7px rgba(15,23,42,0.05);
-}
-
-/* textarea nativo */
-textarea {
-    background: rgba(255,255,255,0.9) !important;
-    border-radius: 14px !important;
-    border: 1px solid rgba(148,163,184,0.8) !important;
-}
-
-/* Dropdown das listas (selectbox options) */
+/* Dropdown das listas (options) */
 div[role="listbox"] {
-    background: rgba(255,255,255,0.96) !important;
-    backdrop-filter: blur(12px) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
+    background: #ffffff !important;
     border-radius: 14px !important;
-    border: 1px solid rgba(148,163,184,0.7) !important;
-    box-shadow: 0 8px 22px rgba(15,23,42,0.20);
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 10px 26px rgba(15,23,42,0.24);
 }
 div[role="option"] {
     color: #0f172a !important;
 }
 
-/* DataFrame: card claro, texto escuro */
+/* =========================
+   DATAFRAMES (tabelas AG-Grid)
+   ========================= */
+
 div[data-testid="stDataFrame"] {
-    background: rgba(255,255,255,0.9) !important;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: #ffffff !important;
     border-radius: 18px !important;
     padding: 0.45rem;
-    box-shadow: 0 8px 24px rgba(15,23,42,0.18);
+    box-shadow: 0 8px 24px rgba(15,23,42,0.20);
 }
 
-/* Tenta clarear as células internas do grid */
-div[data-testid="stDataFrame"] * {
-    color: #0f172a !important;
-}
+/* Força tema claro dentro do AG-Grid */
 div[data-testid="stDataFrame"] .ag-root-wrapper,
+div[data-testid="stDataFrame"] .ag-root,
 div[data-testid="stDataFrame"] .ag-header,
 div[data-testid="stDataFrame"] .ag-row {
-    background-color: rgba(248,250,252,0.98) !important;
+    background-color: #f9fafb !important;
+    color: #0f172a !important;
+}
+div[data-testid="stDataFrame"] .ag-header-cell-label {
+    color: #0f172a !important;
+    font-weight: 600;
+}
+div[data-testid="stDataFrame"] .ag-cell {
+    color: #0f172a !important;
 }
 
-/* Títulos */
-h1, h2, h3 {
-    color: #0f172a;
-    letter-spacing: -0.03em;
-}
-
-/* Tabs estilo iOS (pill) */
+/* =========================
+   TABS (modo iOS)
+   ========================= */
 div[data-baseweb="tab-list"] {
-    background: rgba(255,255,255,0.4);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: rgba(226,232,240,0.8);
     border-radius: 999px;
     padding: 4px;
 }
@@ -172,22 +198,21 @@ button[role="tab"] {
     color: #475569 !important;
 }
 button[role="tab"][aria-selected="true"] {
-    background: rgba(255,255,255,0.98) !important;
-    color: #111827 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
     font-weight: 700 !important;
-    box-shadow: 0 4px 12px rgba(15,23,42,0.18);
+    box-shadow: 0 4px 12px rgba(15,23,42,0.20);
 }
 
-/* Alertas arredondados em vidro */
+/* Alertas */
 div[data-testid="stAlert"] {
-    border-radius: 16px;
-    background: rgba(255,255,255,0.9) !important;
-    backdrop-filter: blur(10px);
+    border-radius: 14px;
+    background: #f9fafb !important;
 }
 
-/* Pequeno ajuste nos parágrafos */
-.stMarkdown p {
-    color: #1f2933;
+/* Radio na sidebar */
+section[data-testid="stSidebar"] .stRadio label {
+    font-weight: 600;
 }
 
 </style>
@@ -199,7 +224,6 @@ st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 # AUTENTICAÇÃO
 # ============================================================
 
-# Se não estiver logado ou precisa trocar senha, fica no fluxo do auth
 if (
     "user" not in st.session_state
     or st.session_state["user"] is None
@@ -228,7 +252,6 @@ opcoes_menu = [
     "Financeiro",
 ]
 
-# Admin vê o módulo de usuários
 if st.session_state["user"].get("is_admin", False):
     opcoes_menu.append("Admin - Usuários")
 
@@ -278,6 +301,11 @@ elif modulo == "Sistemas / Acessos":
     acessos.run()
 
 elif modulo == "Financeiro":
+    financeiro.run()
+
+elif modulo == "Admin - Usuários":
+    usuarios.run()
+
     financeiro.run()
 
 elif modulo == "Admin - Usuários":
