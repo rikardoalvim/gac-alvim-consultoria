@@ -37,73 +37,77 @@ st.set_page_config(
 GLOBAL_CSS = """
 <style>
 
-/* Fundo geral estilo iOS */
+/* FUNDO GERAL – LIQUID GLASS APPLE STYLE */
 html, body, [data-testid="stAppViewContainer"] {
-    background: radial-gradient(circle at 20% 20%, #e5edff 0%, #f5f7fb 45%, #dde6f3 100%) !important;
+    background:
+        radial-gradient(circle at 0% 0%, #9bb5ff 0, transparent 45%),
+        radial-gradient(circle at 100% 0%, #fbc2ff 0, transparent 40%),
+        radial-gradient(circle at 50% 100%, #a5f3fc 0, #e5f0ff 55%);
 }
 
-/* Container raiz sem fundo sólido extra */
+/* container raiz sem fundo */
 [data-testid="stAppViewContainer"] {
     background-color: transparent !important;
 }
 
-/* Conteúdo principal: card claro com leve glass */
+/* CONTEÚDO PRINCIPAL – CARD LIQUID GLASS */
 .main .block-container {
-    background: rgba(255,255,255,0.96);
-    backdrop-filter: blur(14px) saturate(160%);
-    -webkit-backdrop-filter: blur(14px) saturate(160%);
-    border-radius: 22px;
-    padding: 2rem 3rem;
-    margin-top: 1.5rem;
-    margin-bottom: 2.5rem;
-    box-shadow: 0 10px 32px rgba(15,23,42,0.15);
+    background: rgba(255,255,255,0.86);
+    backdrop-filter: blur(22px) saturate(170%);
+    -webkit-backdrop-filter: blur(22px) saturate(170%);
+    border-radius: 26px;
+    padding: 2.2rem 3rem;
+    margin-top: 1.8rem;
+    margin-bottom: 2.4rem;
+    border: 1px solid rgba(255,255,255,0.9);
+    box-shadow:
+        0 18px 55px rgba(15,23,42,0.22),
+        0 0 0 1px rgba(148,163,184,0.25);
 }
 
-/* SIDEBAR – vidro escuro suave */
+/* SIDEBAR – GLASS ESCURO */
 section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(15,23,42,0.9)) !important;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-right: 1px solid rgba(148,163,184,0.4);
+    background: rgba(15,23,42,0.92) !important;
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-right: 1px solid rgba(15,23,42,0.8);
 }
 section[data-testid="stSidebar"] * {
     color: #e5e7eb !important;
 }
+section[data-testid="stSidebar"] .stRadio label {
+    font-weight: 600;
+}
 
-/* Títulos e textos principais */
+/* TÍTULOS E TEXTOS */
 h1, h2, h3, h4 {
     color: #0f172a !important;
     letter-spacing: -0.03em;
 }
 .stMarkdown p {
-    color: #1e293b !important;
+    color: #1f2933 !important;
 }
 
-/* =========================
-   BOTÕES (iOS style)
-   ========================= */
+/* BOTÕES – CAPSULA iOS COM AZUL #0A84FF */
 .stButton > button {
-    background: linear-gradient(135deg, #f9fafb, #e5edff);
+    background: linear-gradient(135deg, #ffffff, #e0ebff);
     color: #0f172a !important;
-    padding: 0.6rem 1.25rem;
+    padding: 0.6rem 1.4rem;
     border-radius: 999px;
-    border: 1px solid rgba(148,163,184,0.8);
-    box-shadow: 0 6px 18px rgba(15,23,42,0.18);
+    border: 1px solid rgba(148,163,184,0.7);
+    box-shadow: 0 8px 24px rgba(15,23,42,0.22);
     font-weight: 600;
     font-size: 0.94rem;
     transition: all 0.18s ease-out;
 }
 .stButton > button:hover {
-    background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+    background: linear-gradient(135deg, #e5f0ff, #c7ddff);
     transform: translateY(-2px) scale(1.01);
-    box-shadow: 0 10px 26px rgba(15,23,42,0.24);
+    box-shadow: 0 14px 32px rgba(15,23,42,0.3);
+    border-color: rgba(59,130,246,0.8);
 }
 
-/* =========================
-   INPUTS / TEXTAREAS / SELECTS
-   ========================= */
-
-/* Caixas de texto iOS: brancas, borda azul clara, texto escuro */
+/* CAMPOS – INPUT / TEXTAREA / SELECT – ESTILO CAMPO iOS */
 .stTextInput input,
 .stTextArea textarea {
     background-color: #f9fafb !important;
@@ -115,16 +119,15 @@ h1, h2, h3, h4 {
     padding-bottom: 0.5rem !important;
 }
 
-/* Wrapper dos inputs (para remover contorno preto grosso) */
+/* remove bordas/caixa preta do wrapper baseweb */
 div[data-baseweb="input"] > div,
 div[data-baseweb="textarea"] > div {
     background-color: transparent !important;
-    border-radius: 14px !important;
     border: none !important;
     box-shadow: none !important;
 }
 
-/* Selectbox */
+/* selectbox “capsula clara” */
 .stSelectbox > div > div {
     background-color: #f9fafb !important;
     border-radius: 14px !important;
@@ -132,43 +135,40 @@ div[data-baseweb="textarea"] > div {
     box-shadow: inset 0 0 0 1px rgba(148,163,184,0.35);
 }
 
-/* Foco nos campos – borda azul estilo iOS */
+/* foco azul iOS */
 .stTextInput input:focus,
 .stTextArea textarea:focus,
 .stSelectbox > div > div:focus-within {
     outline: none !important;
-    border-color: #3b82f6 !important;
-    box-shadow: 0 0 0 2px rgba(59,130,246,0.35) !important;
+    border-color: #0a84ff !important;
+    box-shadow: 0 0 0 2px rgba(10,132,255,0.35) !important;
 }
 
-/* Texto interno sempre escuro */
+/* texto sempre escuro nos campos */
 input, textarea, select {
     color: #0f172a !important;
 }
 
-/* Dropdown das listas (options) */
+/* DROPDOWN DAS LISTAS (options) */
 div[role="listbox"] {
     background: #ffffff !important;
     border-radius: 14px !important;
     border: 1px solid #cbd5e1 !important;
-    box-shadow: 0 10px 26px rgba(15,23,42,0.24);
+    box-shadow: 0 14px 30px rgba(15,23,42,0.35);
 }
 div[role="option"] {
     color: #0f172a !important;
 }
 
-/* =========================
-   DATAFRAMES (tabelas AG-Grid)
-   ========================= */
-
+/* TABELAS / DATAFRAMES – LIGHT THEME */
 div[data-testid="stDataFrame"] {
     background: #ffffff !important;
     border-radius: 18px !important;
     padding: 0.45rem;
-    box-shadow: 0 8px 24px rgba(15,23,42,0.20);
+    box-shadow: 0 10px 28px rgba(15,23,42,0.25);
 }
 
-/* Força tema claro dentro do AG-Grid */
+/* força claro dentro da AG-Grid */
 div[data-testid="stDataFrame"] .ag-root-wrapper,
 div[data-testid="stDataFrame"] .ag-root,
 div[data-testid="stDataFrame"] .ag-header,
@@ -184,11 +184,9 @@ div[data-testid="stDataFrame"] .ag-cell {
     color: #0f172a !important;
 }
 
-/* =========================
-   TABS (modo iOS)
-   ========================= */
+/* TABS EM FORMATO PILL */
 div[data-baseweb="tab-list"] {
-    background: rgba(226,232,240,0.8);
+    background: rgba(226,232,240,0.9);
     border-radius: 999px;
     padding: 4px;
 }
@@ -201,16 +199,16 @@ button[role="tab"][aria-selected="true"] {
     background: #ffffff !important;
     color: #0f172a !important;
     font-weight: 700 !important;
-    box-shadow: 0 4px 12px rgba(15,23,42,0.20);
+    box-shadow: 0 4px 14px rgba(15,23,42,0.25);
 }
 
-/* Alertas */
+/* ALERTAS MAIS SUAVES */
 div[data-testid="stAlert"] {
     border-radius: 14px;
     background: #f9fafb !important;
 }
 
-/* Radio na sidebar */
+/* radio sidebar */
 section[data-testid="stSidebar"] .stRadio label {
     font-weight: 600;
 }
