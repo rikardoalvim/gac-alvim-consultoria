@@ -39,7 +39,7 @@ def run():
 
     df = carregar_candidatos()
 
-    # ============================
+       # ============================
     # MODO: LISTAR
     # ============================
     if modo == "Listar":
@@ -49,51 +49,35 @@ def run():
             st.info("Nenhum candidato cadastrado ainda.")
             return
 
-        df_view = df.sort_values("id_candidato")
+        df_view = df.sort_values("id_candidato").copy()
 
-        # ---------- TABELA CUSTOMIZADA COM BOTÃO DE WHATSAPP ----------
-        tabela_html = "<table style='width:100%; border-collapse: collapse;'>"
-        tabela_html += """
-        <tr style='background-color:#f0f0f0;'>
-            <th style='padding:8px; text-align:left;'>ID</th>
-            <th style='padding:8px; text-align:left;'>Nome</th>
-            <th style='padding:8px; text-align:left;'>Telefone</th>
-            <th style='padding:8px; text-align:left;'>Cidade</th>
-            <th style='padding:8px; text-align:left;'>Cargo</th>
-            <th style='padding:8px; text-align:left;'>WhatsApp</th>
-        </tr>
-        """
+        # Cria coluna com link do WhatsApp
+        def make_whats_link(tel):
+            link = montar_link_whatsapp(tel)
+            if not link:
+                return ""
+            return f'<a href="{link}" target="_blank">💬 WhatsApp</a>'
 
-        for _, row in df_view.iterrows():
-            telefone = row["telefone"]
-            nome = row["nome"]
-            cidade = row["cidade"]
-            cargo = row["cargo_pretendido"]
-            idc = row["id_candidato"]
+        df_view["WhatsApp"] = df_view["telefone"].apply(make_whats_link)
 
-            # Ajusta telefone
-            fone_formatado = "".join(filter(str.isdigit, telefone))
-            link = f"https://wa.me/55{fone_formatado}"
+        # Seleciona só as colunas que você quer exibir
+        df_show = df_view[
+            ["id_candidato", "nome", "telefone", "cidade", "cargo_pretendido", "WhatsApp"]
+        ].rename(
+            columns={
+                "id_candidato": "ID",
+                "nome": "Nome",
+                "telefone": "Telefone",
+                "cidade": "Cidade",
+                "cargo_pretendido": "Cargo",
+            }
+        )
 
-            tabela_html += f"""
-            <tr style='border-bottom:1px solid #ddd;'>
-                <td style='padding:6px;'>{idc}</td>
-                <td style='padding:6px;'>{nome}</td>
-                <td style='padding:6px;'>{telefone}</td>
-                <td style='padding:6px;'>{cidade}</td>
-                <td style='padding:6px;'>{cargo}</td>
-                <td style='padding:6px;'>
-                    <a href="{link}" target="_blank" 
-                        style='text-decoration:none; font-weight:bold; color:#1b8a5a;'>
-                        💬 WhatsApp
-                    </a>
-                </td>
-            </tr>
-            """
-
-        tabela_html += "</table>"
-
-        st.markdown(tabela_html, unsafe_allow_html=True)
+        # Renderiza tabela com HTML habilitado
+        st.write(
+            df_show.to_html(index=False, escape=False),
+            unsafe_allow_html=True,
+        )
 
         return
 
