@@ -99,27 +99,31 @@ def run():
     if "vagas_modo" not in st.session_state:
         st.session_state["vagas_modo"] = "Listar"
 
+    # Container para aplicar CSS específico nesses botões
+    st.markdown("<div class='top-actions'>", unsafe_allow_html=True)
     colA, colB, colC, colD, colE = st.columns(5)
 
     with colA:
-        if st.button("📋 Listar vagas", use_container_width=True):
+        if st.button("📋 Listar vagas", use_container_width=True, key="btn_vagas_listar"):
             st.session_state["vagas_modo"] = "Listar"
 
     with colB:
-        if st.button("➕ Nova vaga", use_container_width=True):
+        if st.button("➕ Nova vaga", use_container_width=True, key="btn_vagas_nova"):
             st.session_state["vagas_modo"] = "Inserir"
 
     with colC:
-        if st.button("✏️ Editar vagas", use_container_width=True):
+        if st.button("✏️ Editar vagas", use_container_width=True, key="btn_vagas_editar"):
             st.session_state["vagas_modo"] = "Editar"
 
     with colD:
-        if st.button("📝 Texto LinkedIn/Whats", use_container_width=True):
+        if st.button("📝 Texto LinkedIn/Whats", use_container_width=True, key="btn_vagas_texto"):
             st.session_state["vagas_modo"] = "Texto"
 
     with colE:
-        if st.button("🔗 Vincular candidatos", use_container_width=True):
+        if st.button("🔗 Vincular candidatos", use_container_width=True, key="btn_vagas_vinculo"):
             st.session_state["vagas_modo"] = "Vinculo"
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
     modo = st.session_state["vagas_modo"]
 
@@ -473,5 +477,6 @@ Se tiver interesse, envie seu *currículo atualizado* ou fale comigo aqui! 🙂
             )
 
         return
+
 
 
