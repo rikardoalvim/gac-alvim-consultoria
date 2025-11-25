@@ -271,35 +271,6 @@ div[role="option"] {
     color: #0f172a !important;
 }
 
-/* =========================
-   DATAFRAMES (st.dataframe) – caso ainda use
-   ========================= */
-
-div[data-testid="stDataFrame"] {
-    background: #ffffff !important;
-    border-radius: 18px !important;
-    padding: 0.45rem;
-    box-shadow:
-        0 10px 28px rgba(15,23,42,0.25),
-        inset 0 0 18px rgba(255,255,255,0.55);
-}
-
-/* modo claro no AG-Grid */
-div[data-testid="stDataFrame"] .ag-root-wrapper,
-div[data-testid="stDataFrame"] .ag-root,
-div[data-testid="stDataFrame"] .ag-header,
-div[data-testid="stDataFrame"] .ag-row,
-div[data-testid="stDataFrame"] .ag-cell,
-div[data-testid="stDataFrame"] .ag-header-cell {
-    background-color: #f9fafb !important;
-    color: #0f172a !important;
-    border-color: #e5e7eb !important;
-}
-div[data-testid="stDataFrame"] .ag-header-cell-label {
-    color: #0f172a !important;
-    font-weight: 600;
-}
-
 /* Alertas */
 div[data-testid="stAlert"] {
     border-radius: 14px;
@@ -392,4 +363,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
