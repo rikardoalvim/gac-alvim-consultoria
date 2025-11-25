@@ -21,143 +21,295 @@ from modules import (
 )
 
 # ============================================
-# CSS GLOBAL - LIQUID GLASS / iOS STYLE
+# CSS GLOBAL - LIQUID GLASS / iOS STYLE (CLARO)
 # ============================================
 
-GLOBAL_CSS = """
+GLOBAL_CSS = '''
 <style>
+/* ============================================
+   GLOBAL LIQUID GLASS UI - iOS STYLE
+   ============================================ */
 
-    /* ====== RESET ====== */
-    html, body, [class*="main"] {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
+html, body, [class*="css"] {
+    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
 
-    /* Fundo líquido iOS */
-    body {
-        background: linear-gradient(135deg, #d9e6ff 0%, #d2f7ff 50%, #ffd4f3 100%);
-        background-attachment: fixed;
-        font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-    }
+/* Fundo geral da aplicação */
+.stApp {
+    background: linear-gradient(
+        135deg,
+        rgba(203, 235, 255, 0.9) 0%,
+        rgba(222, 255, 245, 0.9) 45%,
+        rgba(246, 222, 255, 0.9) 100%
+    ) !important;
+    background-attachment: fixed !important;
+}
 
-    /* ========== LIQUID GLASS BLOCKS ========== */
-    .glass-block {
-        backdrop-filter: blur(18px) saturate(180%);
-        -webkit-backdrop-filter: blur(18px) saturate(180%);
-        background: rgba(255, 255, 255, 0.38);
-        border-radius: 32px;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-        padding: 18px 26px;
-    }
+/* Conteúdo principal em card glass */
+.main .block-container {
+    background: rgba(255,255,255,0.9);
+    backdrop-filter: blur(22px) saturate(170%);
+    -webkit-backdrop-filter: blur(22px) saturate(170%);
+    border-radius: 26px;
+    padding: 2.2rem 3rem;
+    margin-top: 1.8rem;
+    margin-bottom: 2.4rem;
+    border: 1px solid rgba(255,255,255,0.9);
+    box-shadow:
+        0 18px 55px rgba(15,23,42,0.22),
+        0 0 0 1px rgba(148,163,184,0.25);
+}
 
-    /* ========== BOTÕES iOS ========== */
-    .ios-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(255,255,255,0.55);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-        border-radius: 28px;
-        padding: 12px 26px;
-        font-size: 18px;
-        font-weight: 600;
-        border: 1px solid rgba(255,255,255,0.4);
-        box-shadow: 0 4px 18px rgba(0,0,0,0.15);
-        transition: all 0.17s ease-out;
-        cursor: pointer;
-    }
+/* Sidebar em glass escuro */
+section[data-testid="stSidebar"] {
+    background: rgba(15,23,42,0.96) !important;
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-right: 1px solid rgba(15,23,42,0.9);
+}
+section[data-testid="stSidebar"] * {
+    color: #e5e7eb !important;
+}
+section[data-testid="stSidebar"] .stRadio label {
+    font-weight: 600;
+}
 
-    .ios-btn:hover {
-        transform: translateY(-2px) scale(1.03);
-        background: rgba(255,255,255,0.72);
-        box-shadow: 0 6px 20px rgba(0,0,0,0.20);
-    }
+/* Títulos */
+h1, h2, h3, h4 {
+    color: #0f172a !important;
+    letter-spacing: -0.03em;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+.stMarkdown p {
+    color: #1f2933 !important;
+}
 
-    /* ========== MENU SUPERIOR (TABS) ========== */
+/* =========================
+   BOTÕES GERAIS – LIQUID GLASS
+   ========================= */
 
-    /* Container */
-    div[role="tablist"] {
-        background: rgba(255,255,255,0.22) !important;
-        backdrop-filter: blur(20px) !important;
-        -webkit-backdrop-filter: blur(20px) !important;
-        border-radius: 50px !important;
-        padding: 10px 14px !important;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-        margin-bottom: 25px !important;
-        overflow-x: auto;
-        white-space: nowrap;
-    }
+.stButton > button {
+    background: rgba(255,255,255,0.25) !important;
+    color: #111827 !important;
+    padding: 12px 26px !important;
+    border-radius: 28px !important;
+    border: 1px solid rgba(255,255,255,0.55) !important;
+    font-weight: 600 !important;
+    backdrop-filter: blur(16px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+    transition: transform 0.16s ease-out, box-shadow 0.16s ease-out, background 0.16s ease-out !important;
+    box-shadow:
+        0 8px 24px rgba(15,23,42,0.18),
+        inset 0 0 18px rgba(255,255,255,0.55);
+}
+.stButton > button:hover {
+    transform: translateY(-2px);
+    background: rgba(255,255,255,0.8) !important;
+    box-shadow:
+        0 12px 30px rgba(15,23,42,0.24),
+        inset 0 0 22px rgba(255,255,255,0.75);
+}
 
-    /* Cada aba */
-    button[role="tab"] {
-        margin-right: 10px !important;
-        border-radius: 30px !important;
-        padding: 12px 28px !important;
-        background: rgba(255,255,255,0.35) !important;
-        backdrop-filter: blur(12px) !important;
-        font-size: 17px !important;
-        transition: all .25s ease;
-        border: 1px solid rgba(255,255,255,0.45) !important;
-    }
+/* Botões de ação do módulo (Listar / Nova / Editar etc.) */
+.top-actions .stButton > button {
+    padding: 0.8rem 1.9rem;
+    font-size: 1.0rem;
+}
 
-    /* Aba ativa */
-    button[role="tab"][aria-selected="true"] {
-        background: white !important;
-        color: #222 !important;
-        font-weight: 600 !important;
-        box-shadow: 0 4px 18px rgba(0,0,0,0.14);
-        border: 1px solid rgba(255,255,255,0.8) !important;
-        transform: translateY(-2px);
-    }
+/* =========================
+   MENU SUPERIOR – TABS
+   ========================= */
 
-    /* ===== Bounce Animation iOS ===== */
+/* container geral das tabs */
+.stTabs {
+    padding-top: 8px !important;
+    padding-bottom: 4px !important;
+}
 
-    @keyframes iosTabBounce {
-        0%   { transform: translateY(0) scale(1); }
-        40%  { transform: translateY(-4px) scale(1.05); }
-        100% { transform: translateY(-2px) scale(1); }
-    }
+/* barra onde ficam as tabs */
+div[data-baseweb="tab-list"] {
+    background: rgba(255,255,255,0.22) !important;
+    border-radius: 40px !important;
+    padding: 10px 20px !important;
 
-    button[role="tab"][aria-selected="true"] {
-        animation: iosTabBounce 0.22s ease-out;
-    }
+    width: 100% !important;
+    display: flex !important;
+    justify-content: flex-start !important;
+    gap: 0.8rem !important;
 
-    /* Esconde linha vermelha do Streamlit */
-    button[role="tab"]:after {
-        display: none !important;
-    }
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-behavior: smooth !important;
 
-    /* ====== TABLE iOS (Dataframe) ====== */
-    .stDataFrame table {
-        border-radius: 22px !important;
-        overflow: hidden !important;
-        background: rgba(0,0,0,0.85) !important;
-    }
+    box-shadow:
+        0 8px 28px rgba(15,23,42,0.25),
+        inset 0 0 18px rgba(255,255,255,0.55) !important;
+    backdrop-filter: blur(22px) saturate(170%) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(170%) !important;
 
-    .stDataFrame th {
-        background: rgba(255,255,255,0.12) !important;
-        color: #fff !important;
-        font-weight: 600 !important;
-        padding: 14px !important;
-    }
+    margin-bottom: 20px;
+}
 
-    .stDataFrame td {
-        background: rgba(0,0,0,0.55) !important;
-        color: #fff !important;
-        padding: 12px !important;
-    }
+/* esconder scrollbar */
+div[data-baseweb="tab-list"]::-webkit-scrollbar {
+    display: none !important;
+}
+div[data-baseweb="tab-list"] {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+}
 
-    .stDataFrame tbody tr:hover td {
-        background: rgba(255,255,255,0.12) !important;
-    }
+/* remove underline/linha vermelha do Streamlit */
+.stTabs [data-baseweb="tab-highlight"] {
+    background-color: transparent !important;
+    height: 0px !important;
+}
 
+/* animação bounce */
+@keyframes iosTabBounce {
+    0%   { transform: translateY(0) scale(1); }
+    40%  { transform: translateY(-3px) scale(1.03); }
+    100% { transform: translateY(-2px) scale(1); }
+}
+
+/* estilo das tabs (botões) */
+button[role="tab"] {
+    background: rgba(255,255,255,0.43) !important;
+    padding: 10px 22px !important;
+    border-radius: 18px !important;
+
+    font-weight: 600 !important;
+    font-size: 0.98rem !important;
+
+    border: 1px solid rgba(255,255,255,0.55) !important;
+
+    color: #1f2937 !important;
+
+    box-shadow:
+        0 6px 22px rgba(0,0,0,0.12),
+        inset 0 0 18px rgba(255,255,255,0.40) !important;
+
+    transition: background 0.15s ease-in-out, color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+
+/* tab ativa com bounce */
+button[role="tab"][aria-selected="true"] {
+    background: rgba(255,255,255,0.96) !important;
+    color: #000000 !important;
+    box-shadow:
+        0 12px 32px rgba(0,0,0,0.16),
+        inset 0 0 22px rgba(255,255,255,0.70) !important;
+    animation: iosTabBounce 220ms ease-out;
+}
+
+/* efeito de clique leve */
+button[role="tab"]:active {
+    transform: translateY(1px) scale(0.98);
+}
+
+/* remove borda superior do painel das tabs */
+.stTabs [data-baseweb="tab-panel"] {
+    border-top: none !important;
+}
+
+/* =========================
+   INPUTS / TEXTAREAS / SELECTS
+   ========================= */
+
+.stTextInput input,
+.stTextArea textarea {
+    background-color: rgba(249,250,251,0.9) !important;
+    color: #0f172a !important;
+    border-radius: 14px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: inset 0 0 0 1px rgba(148,163,184,0.35),
+                0 0 0 1px rgba(255,255,255,0.8);
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+}
+
+/* remove bordas baseweb internas */
+div[data-baseweb="input"] > div,
+div[data-baseweb="textarea"] > div {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* selectbox glass */
+.stSelectbox > div > div {
+    background-color: rgba(249,250,251,0.95) !important;
+    border-radius: 14px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: inset 0 0 0 1px rgba(148,163,184,0.35),
+                0 0 0 1px rgba(255,255,255,0.6);
+}
+
+/* foco azul estilo iOS */
+.stTextInput input:focus,
+.stTextArea textarea:focus,
+.stSelectbox > div > div:focus-within {
+    outline: none !important;
+    border-color: #0a84ff !important;
+    box-shadow:
+        0 0 0 2px rgba(10,132,255,0.35) !important;
+}
+
+/* texto escuro em inputs */
+input, textarea, select {
+    color: #0f172a !important;
+}
+
+/* dropdown das opções */
+div[role="listbox"] {
+    background: #ffffff !important;
+    border-radius: 14px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 14px 30px rgba(15,23,42,0.35);
+}
+div[role="option"] {
+    color: #0f172a !important;
+}
+
+/* =========================
+   DATAFRAMES (st.dataframe) – caso ainda use
+   ========================= */
+
+div[data-testid="stDataFrame"] {
+    background: #ffffff !important;
+    border-radius: 18px !important;
+    padding: 0.45rem;
+    box-shadow:
+        0 10px 28px rgba(15,23,42,0.25),
+        inset 0 0 18px rgba(255,255,255,0.55);
+}
+
+/* modo claro no AG-Grid */
+div[data-testid="stDataFrame"] .ag-root-wrapper,
+div[data-testid="stDataFrame"] .ag-root,
+div[data-testid="stDataFrame"] .ag-header,
+div[data-testid="stDataFrame"] .ag-row,
+div[data-testid="stDataFrame"] .ag-cell,
+div[data-testid="stDataFrame"] .ag-header-cell {
+    background-color: #f9fafb !important;
+    color: #0f172a !important;
+    border-color: #e5e7eb !important;
+}
+div[data-testid="stDataFrame"] .ag-header-cell-label {
+    color: #0f172a !important;
+    font-weight: 600;
+}
+
+/* Alertas */
+div[data-testid="stAlert"] {
+    border-radius: 14px;
+    background: #f9fafb !important;
+}
 </style>
-"""
-
+'''
 
 # ============================================================
-# CONFIGURACOES GERAIS
+# CONFIGURAÇÕES GERAIS
 # ============================================================
 
 st.set_page_config(
@@ -170,16 +322,16 @@ st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 
 
 def main():
-    # controle de usuario logado
+    # controle de usuário logado
     if "usuario_logado" not in st.session_state:
         st.session_state["usuario_logado"] = None
 
-    # se nao estiver logado, chama tela de autenticacao
+    # se não estiver logado, chama tela de autenticação
     if st.session_state["usuario_logado"] is None:
         auth.run()
         return
 
-    # sidebar - info usuario e selecao de modulo
+    # sidebar - info usuário e seleção de módulo
     with st.sidebar:
         st.markdown(f"👤 **Usuário:** {st.session_state['usuario_logado']}")
         st.markdown("---")
@@ -198,7 +350,7 @@ def main():
             st.rerun()
 
     # =========================
-    # ROTEAMENTO DOS MODULOS
+    # ROTEAMENTO DOS MÓDULOS
     # =========================
     if modulo == "Dashboard":
         dashboard.run()
