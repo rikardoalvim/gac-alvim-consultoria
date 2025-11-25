@@ -36,111 +36,108 @@ st.set_page_config(
 
 GLOBAL_CSS = """
 <style>
-/* Fundo geral estilo iOS */
-body {
-    background: radial-gradient(circle at top left, #e0e7ff 0, #f1f5f9 40%, #e2e8f0 100%) !important;
+
+html, body, [data-testid="stAppViewContainer"] {
+    background: radial-gradient(circle at 20% 20%, #e3e9f8 0%, #f5f7fa 50%, #e1e7f0 100%) !important;
 }
 
-/* Container principal com "respiro" */
+/* REMOVE FUNDO PRETO DO STREAMLIT */
+[data-testid="stAppViewContainer"] {
+    background-color: transparent !important;
+}
+
+/* CONTAINER PRINCIPAL EM GLASS */
 .main .block-container {
-    padding-top: 1.5rem;
-    padding-bottom: 2.5rem;
+    background: rgba(255,255,255,0.50);
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+    border-radius: 24px;
+    padding: 2rem 3rem;
+    margin-top: 2rem;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.08);
 }
 
-/* Sidebar com leve vidro fosco */
+/* SIDEBAR GLASS REAL */
 section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(15,23,42,0.9));
-    color: #e5e7eb;
-}
-section[data-testid="stSidebar"] * {
-    color: #e5e7eb !important;
-}
-
-/* Título do sidebar */
-section[data-testid="stSidebar"] h1,
-section[data-testid="stSidebar"] h2,
-section[data-testid="stSidebar"] h3 {
-    color: #e5e7eb !important;
+    background: rgba(255,255,255,0.25) !important;
+    backdrop-filter: blur(22px) saturate(160%) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(160%) !important;
+    border-right: 1px solid rgba(255,255,255,0.45);
 }
 
-/* Botões – estilo pill, glassy e animados */
+/* BOTÕES iOS */
 .stButton > button {
-    background: linear-gradient(135deg, #4f46e5, #6366f1);
-    color: #ffffff !important;
-    padding: 0.45rem 1.1rem;
-    border-radius: 999px;
-    border: none;
+    background: rgba(255,255,255,0.35);
+    backdrop-filter: blur(14px);
+    border-radius: 14px;
+    padding: 0.6rem 1.2rem;
+    color: #1e293b;
+    border: 1px solid rgba(255,255,255,0.45);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transition: all 0.25s ease;
     font-weight: 600;
-    font-size: 0.9rem;
-    box-shadow: 0 8px 20px rgba(79,70,229,0.35);
-    transition: all 0.18s ease-out;
 }
-
 .stButton > button:hover {
-    transform: translateY(-1px) scale(1.01);
-    box-shadow: 0 12px 26px rgba(79,70,229,0.45);
-    background: linear-gradient(135deg, #4338ca, #4f46e5);
+    background: rgba(255,255,255,0.55);
+    transform: scale(1.03) translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
 }
 
-/* Inputs de texto / número / selects – borda iOS */
-div[data-baseweb="input"] > div,
-div[data-baseweb="select"] > div {
+/* INPUTS GLASS */
+input, textarea, select, div[data-baseweb="input"] > div, div[data-baseweb="select"] > div {
+    background: rgba(255,255,255,0.45) !important;
+    backdrop-filter: blur(14px) saturate(180%) !important;
     border-radius: 12px !important;
-    border: 1px solid rgba(148,163,184,0.7) !important;
-    background-color: rgba(255,255,255,0.85) !important;
-    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.55) !important;
 }
 
-/* Text area */
-textarea {
-    border-radius: 12px !important;
-    border: 1px solid rgba(148,163,184,0.7) !important;
-    background-color: rgba(255,255,255,0.9) !important;
-    backdrop-filter: blur(12px);
-}
-
-/* Dataframe dentro de um "card" */
+/* DATAFRAME EM CARD GLASS */
 div[data-testid="stDataFrame"] {
-    background-color: rgba(255,255,255,0.9) !important;
-    border-radius: 16px;
-    padding: 0.35rem;
-    box-shadow: 0 8px 24px rgba(15,23,42,0.08);
+    background: rgba(255,255,255,0.45) !important;
+    backdrop-filter: blur(12px);
+    border-radius: 18px !important;
+    padding: 0.5rem;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
 }
 
-/* Títulos */
-h1, h2, h3 {
-    color: #0f172a;
-}
-
-/* Tabs – estilo pill */
+/* TABS iOS */
 div[data-baseweb="tab-list"] {
-    background-color: rgba(15,23,42,0.03);
+    background: rgba(255,255,255,0.25);
     border-radius: 999px;
-    padding: 4px;
+    padding: 5px;
+    backdrop-filter: blur(10px);
 }
 button[role="tab"] {
     border-radius: 999px !important;
-    padding: 0.35rem 0.9rem !important;
+    padding: 6px 18px !important;
+    color: #475569 !important;
 }
 button[role="tab"][aria-selected="true"] {
-    background: linear-gradient(135deg, #4f46e5, #6366f1) !important;
-    color: #ffffff !important;
+    background: rgba(255,255,255,0.55) !important;
+    color: #1e293b !important;
+    font-weight: 700 !important;
+    border: 1px solid rgba(255,255,255,0.65);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.10);
 }
 
-/* Mensagens (success / error / warning) levemente arredondadas */
+/* ALERTAS */
 div[data-testid="stAlert"] {
-    border-radius: 14px;
+    background: rgba(255,255,255,0.55) !important;
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
 }
 
-/* Ajusta radio do sidebar */
-section[data-testid="stSidebar"] .stRadio > label {
-    font-weight: 600;
+/* TÍTULOS */
+h1, h2, h3, h4 {
+    color: #1e293b;
+    letter-spacing: -0.3px;
 }
 
-/* Pequeno efeito nos títulos principais */
-header h1 {
-    letter-spacing: 0.02em;
+/* LABELS */
+label, span, p, div {
+    color: #334155 !important;
 }
+
 </style>
 """
 
