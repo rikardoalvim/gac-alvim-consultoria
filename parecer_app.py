@@ -6,6 +6,7 @@
 import streamlit as st
 
 from modules import (
+    auth,
     dashboard,
     clientes,
     candidatos,
@@ -17,26 +18,16 @@ from modules import (
     importador,
     financeiro,
     hunting,
-    auth,
-    usuarios,
 )
 
-# ============================================================
-# CONFIGURAÇÕES GERAIS
-# ============================================================
+# ============================================
+# CSS GLOBAL - LIQUID GLASS / iOS STYLE
+# ============================================
 
-st.set_page_config(
-    page_title="GAC - Gerenciador Alvim Consultoria",
-    layout="wide",
-)
-
-# ============================================================
-# CSS GLOBAL – ESTILO iOS / LIQUID GLASS + LEGÍVEL
-# ============================================================
-
-GLOBAL_CSS = """
+GLOBAL_CSS = '''
+<style>
 /* ============================================
-   GLOBAL LIQUID GLASS UI - iOS 17/18 STYLE
+   GLOBAL LIQUID GLASS UI - iOS STYLE
    ============================================ */
 
 html, body, [class*="css"] {
@@ -54,19 +45,48 @@ html, body, [class*="css"] {
     background-attachment: fixed !important;
 }
 
-/* Glass card */
-.glass-card {
-    background: rgba(255, 255, 255, 0.22);
-    border-radius: 22px;
-    padding: 20px;
+/* Conteúdo principal em card glass */
+.main .block-container {
+    background: rgba(255,255,255,0.86);
+    backdrop-filter: blur(22px) saturate(170%);
+    -webkit-backdrop-filter: blur(22px) saturate(170%);
+    border-radius: 26px;
+    padding: 2.2rem 3rem;
+    margin-top: 1.8rem;
+    margin-bottom: 2.4rem;
+    border: 1px solid rgba(255,255,255,0.9);
     box-shadow:
-        0 8px 32px rgba(31, 38, 135, 0.20),
-        inset 0 0 25px rgba(255, 255, 255, 0.35);
-    backdrop-filter: blur(18px) saturate(180%);
-    -webkit-backdrop-filter: blur(18px) saturate(180%);
+        0 18px 55px rgba(15,23,42,0.22),
+        0 0 0 1px rgba(148,163,184,0.25);
 }
 
-/* Botões glass */
+/* Sidebar glass escura */
+section[data-testid="stSidebar"] {
+    background: rgba(15,23,42,0.92) !important;
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-right: 1px solid rgba(15,23,42,0.8);
+}
+section[data-testid="stSidebar"] * {
+    color: #e5e7eb !important;
+}
+section[data-testid="stSidebar"] .stRadio label {
+    font-weight: 600;
+}
+
+/* Títulos */
+h1, h2, h3, h4 {
+    color: #0f172a !important;
+    letter-spacing: -0.03em;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+.stMarkdown p {
+    color: #1f2933 !important;
+}
+
+/* =========================
+   BOTÕES GERAIS – LIQUID GLASS
+   ========================= */
 .stButton > button {
     background: rgba(255,255,255,0.25) !important;
     color: #222 !important;
@@ -81,7 +101,6 @@ html, body, [class*="css"] {
         0 8px 24px rgba(0,0,0,0.15),
         inset 0 0 18px rgba(255,255,255,0.45);
 }
-
 .stButton > button:hover {
     transform: translateY(-2px);
     box-shadow:
@@ -89,42 +108,27 @@ html, body, [class*="css"] {
         inset 0 0 22px rgba(255,255,255,0.55);
 }
 
-/* Inputs glass */
-input, textarea, select, .stTextInput > div > div > input {
-    background: rgba(255,255,255,0.25) !important;
-    border-radius: 16px !important;
-    border: 1px solid rgba(255,255,255,0.45) !important;
-    padding: 12px !important;
-    font-size: 16px !important;
-    box-shadow:
-        inset 0 0 12px rgba(255,255,255,0.3) !important;
-    backdrop-filter: blur(14px) saturate(160%) !important;
-    -webkit-backdrop-filter: blur(14px) saturate(160%) !important;
+/* Botões de ação do módulo (Listar / Nova / Editar etc.) */
+.top-actions .stButton > button {
+    padding: 0.8rem 1.9rem;
+    font-size: 1.0rem;
 }
 
-/* DataFrame glass */
-div[data-testid="dataframe"] {
-    border-radius: 26px !important;
-    padding: 12px !important;
-    background: rgba(255,255,255,0.25) !important;
-    backdrop-filter: blur(18px) saturate(160%) !important;
-    -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
-    box-shadow:
-        0 10px 32px rgba(0,0,0,0.15),
-        inset 0 0 22px rgba(255,255,255,0.45) !important;
-}
-
-/* Menu superior / tabs */
+/* =========================
+   MENU SUPERIOR – TABS
+   ========================= */
 div[data-baseweb="tab-list"] {
     background: rgba(255,255,255,0.22) !important;
     border-radius: 999px !important;
     padding: 10px 14px !important;
+
     width: 100% !important;
     display: flex !important;
     flex-wrap: nowrap !important;
     gap: 0.50rem !important;
     overflow-x: auto !important;
     scroll-behavior: smooth !important;
+
     box-shadow:
         0 8px 28px rgba(15,23,42,0.25),
         inset 0 0 18px rgba(255,255,255,0.55) !important;
@@ -132,11 +136,11 @@ div[data-baseweb="tab-list"] {
     -webkit-backdrop-filter: blur(22px) saturate(170%) !important;
 }
 
-/* Remove scrollbar */
+/* esconder scroll mas manter movimento */
 div[data-baseweb="tab-list"]::-webkit-scrollbar { display: none; }
-div[data-baseweb="tab-list"] { 
-    -ms-overflow-style: none; 
-    scrollbar-width: none; 
+div[data-baseweb="tab-list"] {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 /* Tab padrão */
@@ -163,33 +167,179 @@ button[role="tab"][aria-selected="true"] {
         inset 0 0 22px rgba(255,255,255,0.70) !important;
 }
 
-/* Títulos */
-h1, h2, h3, h4 {
-    text-shadow: 0 2px 4px rgba(0,0,0,0.15);
+/* =========================
+   INPUTS / TEXTAREAS / SELECTS
+   ========================= */
+.stTextInput input,
+.stTextArea textarea {
+    background-color: rgba(249,250,251,0.9) !important;
+    color: #0f172a !important;
+    border-radius: 14px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: inset 0 0 0 1px rgba(148,163,184,0.35),
+                0 0 0 1px rgba(255,255,255,0.8);
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
 }
 
-/* Expander */
-.streamlit-expanderHeader {
-    background: rgba(255,255,255,0.25) !important;
-    border-radius: 16px !important;
-    box-shadow: inset 0 0 12px rgba(255,255,255,0.4);
+/* remove bordas baseweb */
+div[data-baseweb="input"] > div,
+div[data-baseweb="textarea"] > div {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
 }
-"""
 
+/* selectbox */
+.stSelectbox > div > div {
+    background-color: rgba(249,250,251,0.95) !important;
+    border-radius: 14px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: inset 0 0 0 1px rgba(148,163,184,0.35),
+                0 0 0 1px rgba(255,255,255,0.6);
+}
+
+/* foco azul iOS */
+.stTextInput input:focus,
+.stTextArea textarea:focus,
+.stSelectbox > div > div:focus-within {
+    outline: none !important;
+    border-color: #0a84ff !important;
+    box-shadow:
+        0 0 0 2px rgba(10,132,255,0.35) !important;
+}
+
+/* texto escuro */
+input, textarea, select {
+    color: #0f172a !important;
+}
+
+/* dropdown opções */
+div[role="listbox"] {
+    background: #ffffff !important;
+    border-radius: 14px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 14px 30px rgba(15,23,42,0.35);
+}
+div[role="option"] {
+    color: #0f172a !important;
+}
+
+/* =========================
+   TABELAS HTML
+   ========================= */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #ffffffee !important;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow:
+        0 10px 28px rgba(15,23,42,0.22),
+        inset 0 0 18px rgba(255,255,255,0.55);
+}
+table th, table td {
+    padding: 10px 14px;
+    font-size: 0.90rem;
+    color: #0f172a !important;
+    border-bottom: 1px solid #e5e7eb;
+}
+table th {
+    background: #f1f5f9;
+    font-weight: 700;
+}
+table tr:last-child td {
+    border-bottom: none;
+}
+
+/* =========================
+   DATAFRAMES (caso ainda use)
+   ========================= */
+div[data-testid="stDataFrame"] {
+    background: #ffffff !important;
+    border-radius: 18px !important;
+    padding: 0.45rem;
+    box-shadow:
+        0 10px 28px rgba(15,23,42,0.25),
+        inset 0 0 18px rgba(255,255,255,0.55);
+}
+
+/* força modo claro no AG-Grid */
+div[data-testid="stDataFrame"] .ag-root-wrapper,
+div[data-testid="stDataFrame"] .ag-root,
+div[data-testid="stDataFrame"] .ag-header,
+div[data-testid="stDataFrame"] .ag-row,
+div[data-testid="stDataFrame"] .ag-cell,
+div[data-testid="stDataFrame"] .ag-header-cell {
+    background-color: #f9fafb !important;
+    color: #0f172a !important;
+    border-color: #e5e7eb !important;
+}
+div[data-testid="stDataFrame"] .ag-header-cell-label {
+    color: #0f172a !important;
+    font-weight: 600;
+}
+
+/* Alertas */
+div[data-testid="stAlert"] {
+    border-radius: 14px;
+    background: #f9fafb !important;
+}
+</style>
+'''
 
 # ============================================================
-# ROTEAMENTO DOS MÓDULOS
+# CONFIGURAÇÕES GERAIS
 # ============================================================
 
-if modulo == "Dashboard":
-    dashboard.run()
+st.set_page_config(
+    page_title="GAC - Gerenciador Alvim Consultoria",
+    layout="wide",
+)
 
-elif modulo == "Cadastros Gerais (Clientes)":
-    clientes.run()
+# aplica o CSS global
+st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
 
-elif modulo == "Recrutamento & Seleção":
-    abas = st.tabs(
-        [
+
+def main():
+    # controle de usuário logado
+    if "usuario_logado" not in st.session_state:
+        st.session_state["usuario_logado"] = None
+
+    # se não estiver logado, chama tela de autenticação
+    if st.session_state["usuario_logado"] is None:
+        auth.run()
+        return
+
+    # sidebar - info usuário e seleção de módulo
+    with st.sidebar:
+        st.markdown(f"👤 **Usuário:** {st.session_state['usuario_logado']}")
+        st.markdown("---")
+        modulo = st.radio(
+            "Selecione o módulo:",
+            [
+                "Dashboard",
+                "Cadastros Gerais (Clientes)",
+                "Recrutamento & Seleção",
+                "Sistemas / Acessos",
+                "Financeiro",
+            ],
+        )
+        if st.button("Sair"):
+            st.session_state["usuario_logado"] = None
+            st.rerun()
+
+    # =========================
+    # ROTEAMENTO DOS MÓDULOS
+    # =========================
+    if modulo == "Dashboard":
+        dashboard.run()
+
+    elif modulo == "Cadastros Gerais (Clientes)":
+        clientes.run()
+
+    elif modulo == "Recrutamento & Seleção":
+        tabs = st.tabs([
             "👤 Candidatos",
             "📂 Vagas",
             "📝 Parecer",
@@ -197,34 +347,28 @@ elif modulo == "Recrutamento & Seleção":
             "📌 Pipeline",
             "📥 Importar antigos",
             "🔎 Hunting / LinkedIn",
-        ]
-    )
-    with abas[0]:
-        candidatos.run()
-    with abas[1]:
-        vagas.run()
-    with abas[2]:
-        parecer_mod.run()
-    with abas[3]:
-        historico.run()
-    with abas[4]:
-        pipeline_mod.run()
-    with abas[5]:
-        importador.run()
-    with abas[6]:
-        hunting.run()
+        ])
+        with tabs[0]:
+            candidatos.run()
+        with tabs[1]:
+            vagas.run()
+        with tabs[2]:
+            parecer_mod.run()
+        with tabs[3]:
+            historico.run()
+        with tabs[4]:
+            pipeline_mod.run()
+        with tabs[5]:
+            importador.run()
+        with tabs[6]:
+            hunting.run()
 
-elif modulo == "Sistemas / Acessos":
-    acessos.run()
+    elif modulo == "Sistemas / Acessos":
+        acessos.run()
 
-elif modulo == "Financeiro":
-    financeiro.run()
+    elif modulo == "Financeiro":
+        financeiro.run()
 
-elif modulo == "Admin - Usuários":
-    usuarios.run()
 
-    financeiro.run()
-
-elif modulo == "Admin - Usuários":
-    usuarios.run()
-
+if __name__ == "__main__":
+    main()
