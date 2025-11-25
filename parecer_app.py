@@ -34,15 +34,16 @@ st.set_page_config(
 # CSS GLOBAL – ESTILO iOS / LIQUID GLASS + LEGÍVEL
 # ============================================================
 
+GLOBAL_CSS = """
 /* ============================================
-   GLOBAL LIQUID GLASS UI – iOS 17/18 STYLE
+   GLOBAL LIQUID GLASS UI - iOS 17/18 STYLE
    ============================================ */
 
 html, body, [class*="css"] {
     font-family: 'Inter', sans-serif !important;
 }
 
-/* Background geral com gradiente suave */
+/* Background geral */
 .stApp {
     background: linear-gradient(
         135deg,
@@ -53,10 +54,7 @@ html, body, [class*="css"] {
     background-attachment: fixed !important;
 }
 
-/* ============================================
-   CARTÕES, BOTÕES, ELEMENTOS GLASS PADRÃO
-   ============================================ */
-
+/* Glass card */
 .glass-card {
     background: rgba(255, 255, 255, 0.22);
     border-radius: 22px;
@@ -68,10 +66,7 @@ html, body, [class*="css"] {
     -webkit-backdrop-filter: blur(18px) saturate(180%);
 }
 
-/* ============================================
-   BOTÕES iOS GLASS
-   ============================================ */
-
+/* Botões glass */
 .stButton > button {
     background: rgba(255,255,255,0.25) !important;
     color: #222 !important;
@@ -94,10 +89,7 @@ html, body, [class*="css"] {
         inset 0 0 22px rgba(255,255,255,0.55);
 }
 
-/* ============================================
-   INPUTS / TEXTAREA GLASS
-   ============================================ */
-
+/* Inputs glass */
 input, textarea, select, .stTextInput > div > div > input {
     background: rgba(255,255,255,0.25) !important;
     border-radius: 16px !important;
@@ -110,10 +102,7 @@ input, textarea, select, .stTextInput > div > div > input {
     -webkit-backdrop-filter: blur(14px) saturate(160%) !important;
 }
 
-/* ============================================
-   TABELAS (DataFrame) – SUPER glass
-   ============================================ */
-
+/* DataFrame glass */
 div[data-testid="dataframe"] {
     border-radius: 26px !important;
     padding: 12px !important;
@@ -125,41 +114,32 @@ div[data-testid="dataframe"] {
         inset 0 0 22px rgba(255,255,255,0.45) !important;
 }
 
-/* ============================================
-   MENU SUPERIOR / TABS – iOS Liquid Glass
-   ============================================ */
-
+/* Menu superior / tabs */
 div[data-baseweb="tab-list"] {
     background: rgba(255,255,255,0.22) !important;
     border-radius: 999px !important;
     padding: 10px 14px !important;
-
-    /* NOVO → scroll suave */
     width: 100% !important;
     display: flex !important;
     flex-wrap: nowrap !important;
     gap: 0.50rem !important;
     overflow-x: auto !important;
     scroll-behavior: smooth !important;
-
     box-shadow:
         0 8px 28px rgba(15,23,42,0.25),
         inset 0 0 18px rgba(255,255,255,0.55) !important;
-
     backdrop-filter: blur(22px) saturate(170%) !important;
     -webkit-backdrop-filter: blur(22px) saturate(170%) !important;
 }
 
-/* esconder barra */
-div[data-baseweb="tab-list"]::-webkit-scrollbar {
-    display: none;
-}
-div[data-baseweb="tab-list"] {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+/* Remove scrollbar */
+div[data-baseweb="tab-list"]::-webkit-scrollbar { display: none; }
+div[data-baseweb="tab-list"] { 
+    -ms-overflow-style: none; 
+    scrollbar-width: none; 
 }
 
-/* TAB individual */
+/* Tab padrão */
 button[role="tab"] {
     background: rgba(255,255,255,0.35) !important;
     padding: 12px 24px !important;
@@ -173,6 +153,7 @@ button[role="tab"] {
         inset 0 0 18px rgba(255,255,255,0.45) !important;
 }
 
+/* Tab selecionada */
 button[role="tab"][aria-selected="true"] {
     background: rgba(255,255,255,0.90) !important;
     color: #000 !important;
@@ -182,65 +163,19 @@ button[role="tab"][aria-selected="true"] {
         inset 0 0 22px rgba(255,255,255,0.70) !important;
 }
 
-/* ============================================
-   TÍTULOS COM SOMBRA SUAVE
-   ============================================ */
-
+/* Títulos */
 h1, h2, h3, h4 {
     text-shadow: 0 2px 4px rgba(0,0,0,0.15);
 }
 
-/* ============================================
-   EXPANDERS (opcional)
-   ============================================ */
-
+/* Expander */
 .streamlit-expanderHeader {
     background: rgba(255,255,255,0.25) !important;
     border-radius: 16px !important;
     box-shadow: inset 0 0 12px rgba(255,255,255,0.4);
 }
+"""
 
-st.markdown(GLOBAL_CSS, unsafe_allow_html=True)
-
-# ============================================================
-# AUTENTICAÇÃO
-# ============================================================
-
-if (
-    "user" not in st.session_state
-    or st.session_state["user"] is None
-    or st.session_state.get("forcar_troca_senha", False)
-):
-    auth.run()
-    st.stop()
-
-# Info do usuário logado no sidebar
-st.sidebar.markdown(f"👤 Usuário: **{st.session_state['user']['username']}**")
-if st.sidebar.button("Sair", use_container_width=True):
-    st.session_state.clear()
-    st.rerun()
-
-st.sidebar.markdown("---")
-
-# ============================================================
-# MENU LATERAL
-# ============================================================
-
-opcoes_menu = [
-    "Dashboard",
-    "Cadastros Gerais (Clientes)",
-    "Recrutamento & Seleção",
-    "Sistemas / Acessos",
-    "Financeiro",
-]
-
-if st.session_state["user"].get("is_admin", False):
-    opcoes_menu.append("Admin - Usuários")
-
-modulo = st.sidebar.radio(
-    "Selecione o módulo:",
-    opcoes_menu,
-)
 
 # ============================================================
 # ROTEAMENTO DOS MÓDULOS
