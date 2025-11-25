@@ -61,6 +61,33 @@ def copiar_para_clipboard(texto: str):
     components.html(js, height=0)
 
 
+def render_tabela_html(df, columns, headers):
+    """Renderiza DataFrame como tabela HTML padrão iOS/Glass (igual candidatos)."""
+    if df.empty:
+        st.info("Nenhum registro encontrado.")
+        return
+
+    html = ["<table>"]
+
+    # Cabeçalho
+    html.append("<thead><tr>")
+    for h in headers:
+        html.append(f"<th>{h}</th>")
+    html.append("</tr></thead>")
+
+    # Corpo
+    html.append("<tbody>")
+    for _, row in df[columns].iterrows():
+        html.append("<tr>")
+        for col in columns:
+            valor = row[col]
+            html.append(f"<td>{valor}</td>")
+        html.append("</tr>")
+    html.append("</tbody></table>")
+
+    st.markdown("".join(html), unsafe_allow_html=True)
+
+
 # =============================================
 # MÓDULO PRINCIPAL
 # =============================================
@@ -110,8 +137,31 @@ def run():
             st.info("Nenhuma vaga cadastrada.")
             return
 
-        df_view = df.sort_values("id_vaga")
-        st.dataframe(df_view, use_container_width=True)
+        df_view = df.sort_values("id_vaga").fillna("").astype(str)
+
+        render_tabela_html(
+            df_view,
+            columns=[
+                "id_vaga",
+                "id_cliente",
+                "nome_cliente",
+                "cargo",
+                "modalidade",
+                "data_abertura",
+                "data_fechamento",
+                "status",
+            ],
+            headers=[
+                "ID",
+                "ID Cliente",
+                "Cliente",
+                "Cargo",
+                "Modalidade",
+                "Abertura",
+                "Fechamento",
+                "Status",
+            ],
+        )
 
         return
 
@@ -219,11 +269,11 @@ def run():
 
         with col1:
             cargo_edit = st.text_input("Cargo da vaga", value=row["cargo"])
+            modalidades_lst = ["CLT", "PJ", "Aprendiz", "Estagiário"]
             modalidade_edit = st.selectbox(
                 "Modalidade",
-                ["CLT", "PJ", "Aprendiz", "Estagiário"],
-                index=["CLT", "PJ", "Aprendiz", "Estagiário"].index(row["modalidade"]) 
-                    if row["modalidade"] in ["CLT", "PJ", "Aprendiz", "Estagiário"] else 0,
+                modalidades_lst,
+                index=modalidades_lst.index(row["modalidade"]) if row["modalidade"] in modalidades_lst else 0,
             )
 
         with col2:
@@ -239,11 +289,11 @@ def run():
 
             data_abertura_edit = st.date_input("Abertura", value=data_abertura_dt)
             data_fechamento_edit = st.date_input("Fechamento", value=data_fechamento_dt)
+            status_lst = ["Aberta", "Em andamento", "Encerrada"]
             status_edit = st.selectbox(
                 "Status",
-                ["Aberta", "Em andamento", "Encerrada"],
-                index=["Aberta", "Em andamento", "Encerrada"].index(row["status"])
-                    if row["status"] in ["Aberta", "Em andamento", "Encerrada"] else 0,
+                status_lst,
+                index=status_lst.index(row["status"]) if row["status"] in status_lst else 0,
             )
 
         descricao_edit = st.text_area("Descrição da vaga", value=row["descricao_vaga"], height=200)
@@ -403,6 +453,7 @@ Se tiver interesse, envie seu *currículo atualizado* ou fale comigo aqui! 🙂
             st.rerun()
 
         st.markdown("### Candidatos vinculados")
+
         df_vinc_atual = carregar_vaga_candidatos()
         df_vinc_atual = df_vinc_atual[df_vinc_atual["id_vaga"] == str(id_vaga_vinc)]
 
@@ -413,8 +464,14 @@ Se tiver interesse, envie seu *currículo atualizado* ou fale comigo aqui! 🙂
                 df_cand[["id_candidato", "nome", "telefone", "cidade"]],
                 on="id_candidato",
                 how="left",
+            ).fillna("").astype(str)
+
+            render_tabela_html(
+                df_show,
+                columns=["id_candidato", "nome", "telefone", "cidade", "data_vinculo"],
+                headers=["ID Cand.", "Nome", "Telefone", "Cidade", "Data vínculo"],
             )
-            st.dataframe(df_show, use_container_width=True)
 
         return
+
 
