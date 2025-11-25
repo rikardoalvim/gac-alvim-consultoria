@@ -116,7 +116,7 @@ def run():
         return
 
     # =========================================================
-    # MODO 2 – INSERIR
+    # MODO 2 – INSERIR (NOVA VAGA)
     # =========================================================
     if modo == "Inserir":
         st.subheader("➕ Nova vaga")
@@ -145,48 +145,136 @@ def run():
 
         descricao = st.text_area("Descrição da vaga", height=200)
 
-        if st.button("💾 Salvar vaga", use_container_width=True):
-            if not cargo.strip():
-                st.error("Informe o cargo.")
-            else:
-                novo_id = registrar_vaga(
-                    id_cliente=str(id_cliente_sel),
-                    nome_cliente=nome_cliente_sel,
-                    cargo=cargo.strip(),
-                    modalidade=modalidade,
-                    data_abertura=data_abertura,
-                    data_fechamento=data_fechamento,
-                    status=status,
-                    descricao_vaga=descricao,
-                )
-                st.success(f"Vaga cadastrada (ID {novo_id}).")
+        colb1, colb2 = st.columns([1, 1])
+        with colb1:
+            if st.button("💾 Salvar vaga", use_container_width=True):
+                if not cargo.strip():
+                    st.error("Informe o cargo.")
+                else:
+                    novo_id = registrar_vaga(
+                        id_cliente=str(id_cliente_sel),
+                        nome_cliente=nome_cliente_sel,
+                        cargo=cargo.strip(),
+                        modalidade=modalidade,
+                        data_abertura=data_abertura,
+                        data_fechamento=data_fechamento,
+                        status=status,
+                        descricao_vaga=descricao,
+                    )
+                    st.success(f"Vaga cadastrada (ID {novo_id}).")
+                    st.session_state["vagas_modo"] = "Listar"
+                    st.rerun()
+        with colb2:
+            if st.button("⬅ Voltar para lista", use_container_width=True):
                 st.session_state["vagas_modo"] = "Listar"
                 st.rerun()
 
         return
 
     # =========================================================
-    # MODO 3 – EDITAR
+    # MODO 3 – EDITAR (FORMULÁRIO, NÃO GRID)
     # =========================================================
     if modo == "Editar":
-        st.subheader("✏️ Editar vagas")
+        st.subheader("✏️ Editar vaga")
 
-        df = carregar_vagas()
-        if df.empty:
+        df_vagas = carregar_vagas()
+        if df_vagas.empty:
             st.info("Nenhuma vaga para editar.")
             return
 
-        df = df.sort_values("id_vaga")
-        edit = st.data_editor(
-            df, use_container_width=True,
-            column_config={"id_vaga": st.column_config.Column("ID", disabled=True)},
-            num_rows="dynamic",
+        df_cli = carregar_clientes()
+        if df_cli.empty:
+            st.warning("Não há clientes cadastrados para vincular à vaga.")
+            return
+
+        opcoes_vagas = {
+            int(r["id_vaga"]): f"{r['id_vaga']} - {r['nome_cliente']} - {r['cargo']}"
+            for _, r in df_vagas.iterrows()
+        }
+
+        id_vaga_sel = st.selectbox(
+            "Selecione a vaga para editar:",
+            list(opcoes_vagas.keys()),
+            format_func=lambda x: opcoes_vagas[x],
+            key="vaga_edit_sel",
         )
 
-        if st.button("💾 Salvar alterações", use_container_width=True):
-            edit.to_csv(LOG_VAGAS, sep=";", index=False, encoding="utf-8")
-            st.success("Alterações salvas.")
-            st.rerun()
+        row = df_vagas[df_vagas["id_vaga"] == str(id_vaga_sel)].iloc[0]
+
+        # Cliente da vaga
+        opcoes_cli = {int(r["id_cliente"]): r["nome_cliente"] for _, r in df_cli.iterrows()}
+        id_cliente_atual = int(row["id_cliente"]) if str(row["id_cliente"]).isdigit() else list(opcoes_cli.keys())[0]
+
+        id_cliente_edit = st.selectbox(
+            "Cliente:",
+            list(opcoes_cli.keys()),
+            index=list(opcoes_cli.keys()).index(id_cliente_atual) if id_cliente_atual in opcoes_cli else 0,
+            format_func=lambda x: opcoes_cli[x],
+            key="vaga_edit_cli_sel",
+        )
+        nome_cliente_edit = opcoes_cli[id_cliente_edit]
+
+        # Formulário com dados da vaga
+        col1, col2 = st.columns(2)
+
+        with col1:
+            cargo_edit = st.text_input("Cargo da vaga", value=row["cargo"])
+            modalidade_edit = st.selectbox(
+                "Modalidade",
+                ["CLT", "PJ", "Aprendiz", "Estagiário"],
+                index=["CLT", "PJ", "Aprendiz", "Estagiário"].index(row["modalidade"]) 
+                    if row["modalidade"] in ["CLT", "PJ", "Aprendiz", "Estagiário"] else 0,
+            )
+
+        with col2:
+            try:
+                data_abertura_dt = datetime.strptime(row["data_abertura"], "%Y-%m-%d").date()
+            except Exception:
+                data_abertura_dt = datetime.today().date()
+
+            try:
+                data_fechamento_dt = datetime.strptime(row["data_fechamento"], "%Y-%m-%d").date()
+            except Exception:
+                data_fechamento_dt = datetime.today().date()
+
+            data_abertura_edit = st.date_input("Abertura", value=data_abertura_dt)
+            data_fechamento_edit = st.date_input("Fechamento", value=data_fechamento_dt)
+            status_edit = st.selectbox(
+                "Status",
+                ["Aberta", "Em andamento", "Encerrada"],
+                index=["Aberta", "Em andamento", "Encerrada"].index(row["status"])
+                    if row["status"] in ["Aberta", "Em andamento", "Encerrada"] else 0,
+            )
+
+        descricao_edit = st.text_area("Descrição da vaga", value=row["descricao_vaga"], height=200)
+
+        colb1, colb2 = st.columns([1, 1])
+
+        with colb1:
+            if st.button("💾 Salvar alterações", use_container_width=True, key="btn_salvar_vaga_edit"):
+                df_total = carregar_vagas()
+                mask = df_total["id_vaga"] == str(id_vaga_sel)
+                if not mask.any():
+                    st.error("Vaga não encontrada para atualização.")
+                else:
+                    df_total.loc[mask, "id_cliente"] = str(id_cliente_edit)
+                    df_total.loc[mask, "nome_cliente"] = nome_cliente_edit
+                    df_total.loc[mask, "cargo"] = cargo_edit.strip()
+                    df_total.loc[mask, "modalidade"] = modalidade_edit
+                    df_total.loc[mask, "data_abertura"] = data_abertura_edit.strftime("%Y-%m-%d")
+                    df_total.loc[mask, "data_fechamento"] = data_fechamento_edit.strftime("%Y-%m-%d")
+                    df_total.loc[mask, "status"] = status_edit
+                    df_total.loc[mask, "descricao_vaga"] = descricao_edit
+
+                    df_total.to_csv(LOG_VAGAS, sep=";", index=False, encoding="utf-8")
+                    st.success("Vaga atualizada com sucesso!")
+                    st.session_state["vagas_modo"] = "Listar"
+                    st.rerun()
+
+        with colb2:
+            if st.button("⬅ Voltar para lista", use_container_width=True, key="btn_voltar_edit"):
+                st.session_state["vagas_modo"] = "Listar"
+                st.rerun()
 
         return
 
@@ -240,12 +328,12 @@ Se tiver interesse, envie seu *currículo atualizado* ou fale comigo aqui! 🙂
         with col1:
             if st.button("📋 Copiar texto LinkedIn", use_container_width=True):
                 copiar_para_clipboard(texto_linkedin)
-                st.success("Copiado para a área de transferência!")
+                st.success("Texto para LinkedIn copiado para a área de transferência!")
 
         with col2:
             if st.button("📋 Copiar texto WhatsApp", use_container_width=True):
                 copiar_para_clipboard(texto_whats)
-                st.success("Copiado para a área de transferência!")
+                st.success("Texto para WhatsApp copiado para a área de transferência!")
 
         with st.expander("Visualizar textos gerados"):
             st.markdown("**LinkedIn:**")
@@ -278,7 +366,10 @@ Se tiver interesse, envie seu *currículo atualizado* ou fale comigo aqui! 🙂
         )
 
         df_vinc = carregar_vaga_candidatos()
-        vinculados = df_vinc[df_vinc["id_vaga"] == str(id_vaga_vinc)] if not df_vinc.empty else pd.DataFrame()
+        if not df_vinc.empty:
+            vinculados = df_vinc[df_vinc["id_vaga"] == str(id_vaga_vinc)]
+        else:
+            vinculados = pd.DataFrame(columns=["id_vaga", "id_candidato", "data_vinculo", "observacao"])
 
         ids_existentes = set(vinculados["id_candidato"].tolist())
         opcoes_candidatos = {str(r["id_candidato"]): r["nome"] for _, r in df_cand.iterrows()}
@@ -292,13 +383,11 @@ Se tiver interesse, envie seu *currículo atualizado* ou fale comigo aqui! 🙂
 
         if st.button("💾 Salvar vínculos", use_container_width=True):
             df_todos = carregar_vaga_candidatos()
-
             if not df_todos.empty:
                 df_todos = df_todos[df_todos["id_vaga"] != str(id_vaga_vinc)]
 
             novos = []
             agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
             for idc in selecionados:
                 novos.append({
                     "id_vaga": str(id_vaga_vinc),
@@ -309,7 +398,6 @@ Se tiver interesse, envie seu *currículo atualizado* ou fale comigo aqui! 🙂
 
             df_novos = pd.DataFrame(novos)
             df_final = pd.concat([df_todos, df_novos], ignore_index=True) if not df_todos.empty else df_novos
-
             salvar_vaga_candidatos(df_final)
             st.success("Vínculos atualizados!")
             st.rerun()
