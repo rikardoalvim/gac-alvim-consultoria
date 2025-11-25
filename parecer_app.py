@@ -1,11 +1,20 @@
 # ================================
 # GAC - Gerenciador Alvim Consultoria
-# App principal (roteamento + layout iOS glass)
+# Aplicação principal (parecer_app.py)
 # ================================
+
+import os
+import sys
+from typing import Optional
 
 import streamlit as st
 
-from modules import (
+# Garante que a pasta "modules" seja encontrada
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.append(BASE_DIR)
+
+from modules import (  # type: ignore
     auth,
     dashboard,
     clientes,
@@ -15,354 +24,302 @@ from modules import (
     acessos,
     financeiro,
     parecer_mod,
-    historico,
-    importador,
-    hunting,
 )
 
-# -------------------------------------------------
-# CONFIG GERAL
-# -------------------------------------------------
 
-st.set_page_config(
-    page_title="GAC - Gerenciador Alvim Consultoria",
-    layout="wide",
-)
+# ---------------------------------------------------------
+# CSS GLOBAL – Liquid Glass + tabelas + selectbox claro
+# ---------------------------------------------------------
+def inject_global_css() -> None:
+    st.markdown(
+        """
+        <style>
+        /* Fundo geral em gradiente pastel */
+        .stApp {
+            background: radial-gradient(circle at 0% 0%, #e0f7ff 0, #f6e9ff 40%, #fdf2ff 80%);
+            color-scheme: light;
+        }
 
-# -------------------------------------------------
-# CSS GLOBAL – TEMA GLASS / iOS STYLE
-# -------------------------------------------------
+        /* Remove barra lateral padrão do Streamlit */
+        section[data-testid="stSidebar"] {
+            display: none !important;
+        }
 
-GLASS_CSS = """
-<style>
-.main .block-container {
-    padding-top: 1.5rem;
-    padding-bottom: 2rem;
-    padding-left: 2.5rem;
-    padding-right: 2.5rem;
-    max-width: 1400px;
-}
+        /* Deixa o container principal mais largo */
+        .block-container {
+            padding-top: 1.3rem;
+            padding-left: 2.5rem;
+            padding-right: 2.5rem;
+            max-width: 1400px;
+        }
 
-.stApp {
-    background: radial-gradient(circle at top left, #e0f7ff 0, #d8f5e9 35%, #f6e6ff 100%);
-    color: #0f172a;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
-                 "Segoe UI", sans-serif;
-}
+        /* ---------------- NAV SUPERIOR (fixo) ---------------- */
+        .main-nav-wrapper {
+            position: sticky;
+            top: 0.6rem;
+            z-index: 999;
+            padding: 0.5rem 0.75rem 0.7rem 0.75rem;
+            border-radius: 999px;
+            margin-bottom: 0.8rem;
+            background: rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.25);
+        }
 
-header[data-testid="stHeader"] {
-    background: transparent;
-}
+        .main-nav-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
 
-h1, h2, h3, h4 {
-    color: #0f172a;
-    font-weight: 700;
-}
+        /* Botões em estilo “chip” (nav + ações) */
+        .stButton>button {
+            border-radius: 999px !important;
+            border: 1px solid rgba(255, 255, 255, 0.7) !important;
+            padding: 0.35rem 1.15rem !important;
+            font-size: 0.90rem !important;
+            font-weight: 600 !important;
+            color: #111827 !important;
+            background: linear-gradient(135deg,
+                        rgba(255, 255, 255, 0.92),
+                        rgba(240, 249, 255, 0.95)) !important;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.22) !important;
+            transition: transform 0.14s ease-out,
+                        box-shadow 0.14s ease-out,
+                        background 0.14s ease-out,
+                        border-color 0.14s ease-out;
+        }
 
-.glass-card {
-    background: linear-gradient(135deg, rgba(255,255,255,0.70), rgba(255,255,255,0.35));
-    border-radius: 28px;
-    padding: 1.0rem 1.4rem;
-    box-shadow:
-        0 18px 45px rgba(15,23,42,0.22),
-        0 0 0 1px rgba(255,255,255,0.60);
-    backdrop-filter: blur(24px) saturate(160%);
-    -webkit-backdrop-filter: blur(24px) saturate(160%);
-}
+        .stButton>button:hover {
+            transform: translateY(-1px) scale(1.01);
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.30) !important;
+            background: linear-gradient(135deg,
+                        rgba(255, 255, 255, 0.98),
+                        rgba(224, 231, 255, 0.98)) !important;
+        }
 
-div[data-testid="stButton"] > button {
-    border-radius: 999px;
-    border: 1px solid rgba(255,255,255,0.8);
-    background: radial-gradient(circle at top left,
-        rgba(255,255,255,0.95),
-        rgba(255,255,255,0.75)
-    );
-    color: #0f172a;
-    padding: 0.55rem 1.4rem;
-    font-weight: 600;
-    font-size: 0.98rem;
-    box-shadow:
-        0 14px 35px rgba(15,23,42,0.20),
-        0 0 0 1px rgba(255,255,255,0.90);
-    backdrop-filter: blur(24px) saturate(160%);
-    -webkit-backdrop-filter: blur(24px) saturate(160%);
-    transition: transform 0.16s ease-out, box-shadow 0.16s ease-out,
-                background 0.18s ease-out;
-}
+        /* Botão de nav ativo – leve destaque rosa */
+        .nav-active>button {
+            border-color: rgba(244, 114, 182, 0.8) !important;
+            box-shadow: 0 18px 40px rgba(236, 72, 153, 0.40) !important;
+        }
 
-div[data-testid="stButton"] > button:hover {
-    transform: translateY(-2px) scale(1.01);
-    box-shadow:
-        0 20px 40px rgba(15,23,42,0.26),
-        0 0 0 1px rgba(255,255,255,0.95);
-}
+        /* Linha de ações abaixo do menu (Parecer / Sair) */
+        .glass-actions-row {
+            margin-top: 0.35rem;
+            display: flex;
+            justify-content: flex-start;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
 
-div[data-testid="stButton"] > button:active {
-    transform: translateY(0px) scale(0.98);
-    box-shadow:
-        0 10px 25px rgba(15,23,42,0.18),
-        0 0 0 1px rgba(255,255,255,0.85);
-}
+        /* Badge de usuário no canto inferior direito */
+        .user-badge {
+            position: fixed;
+            right: 1.6rem;
+            bottom: 1.2rem;
+            z-index: 1000;
+            padding: 0.25rem 0.85rem;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.86);
+            color: #e5e7eb;
+            font-size: 0.80rem;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
+        }
 
-/* NAV BAR SUPERIOR */
-.app-nav-bar {
-    margin-bottom: 0.6rem;
-}
+        .user-badge span.emoji {
+            font-size: 1rem;
+        }
 
-.app-nav-inner {
-    display: flex;
-    gap: 0.9rem;
-    justify-content: center;
-    align-items: center;
-}
+        /* TÍTULOS PRINCIPAIS */
+        h1, h2, h3 {
+            color: #0f172a;
+        }
 
-.app-nav-inner > div[data-testid="column"] > div {
-    width: 100%;
-}
+        /* ---------------- TABELAS EM ESTILO GLASS ---------------- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.4rem;
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 22px;
+            overflow: hidden;
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.22);
+        }
 
-/* Linha com usuário, parecer, sair */
-.user-row {
-    margin-top: 0.1rem;
-    margin-bottom: 1.0rem;
-}
+        thead tr {
+            background: rgba(15, 23, 42, 0.06);
+        }
 
-.user-label {
-    font-size: 0.95rem;
-    color: #0f172a;
-    opacity: 0.85;
-}
+        th, td {
+            padding: 0.55rem 0.8rem;
+            font-size: 0.85rem;
+            color: #111827;
+            text-align: left;
+        }
 
-/* INPUTS: text, number, date, etc */
-div[data-testid="stTextInput"] > div > div,
-div[data-testid="stNumberInput"] > div > div,
-div[data-testid="stDateInput"] > div > div {
-    background: linear-gradient(
-        135deg,
-        rgba(255,255,255,0.85),
-        rgba(255,255,255,0.60)
-    );
-    border-radius: 18px;
-    border: 1px solid rgba(255,255,255,0.92);
-    box-shadow:
-        0 10px 28px rgba(15,23,42,0.20),
-        0 0 0 1px rgba(255,255,255,0.85);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-}
+        tbody tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.9);
+        }
 
-div[data-testid="stTextInput"] input,
-div[data-testid="stNumberInput"] input {
-    color: #0f172a;
-    font-weight: 500;
-}
+        tbody tr:hover {
+            background: rgba(239, 246, 255, 0.98);
+        }
 
-/* TEXT AREA */
-div[data-testid="stTextArea"] textarea {
-    background: linear-gradient(
-        135deg,
-        rgba(255,255,255,0.88),
-        rgba(255,255,255,0.70)
-    );
-    border-radius: 18px;
-    border: 1px solid rgba(255,255,255,0.95);
-    color: #0f172a;
-    box-shadow:
-        0 12px 30px rgba(15,23,42,0.20),
-        0 0 0 1px rgba(255,255,255,0.88);
-}
+        /* Selectbox/dropdown mais claro */
+        .stSelectbox div[data-baseweb="select"],
+        .stMultiSelect div[data-baseweb="select"] {
+            background: rgba(255, 255, 255, 0.92) !important;
+            border-radius: 16px !important;
+        }
 
-/* SELECTS / MULTISELECT */
-div[data-baseweb="select"] > div {
-    background: linear-gradient(
-        135deg,
-        rgba(255,255,255,0.9),
-        rgba(255,255,255,0.70)
-    );
-    border-radius: 18px !important;
-    border: 1px solid rgba(255,255,255,0.95);
-    box-shadow:
-        0 10px 26px rgba(15,23,42,0.20),
-        0 0 0 1px rgba(255,255,255,0.90);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
-    color: #0f172a;
-}
+        .stSelectbox div[role="listbox"],
+        .stMultiSelect div[role="listbox"] {
+            background: #f9fafb !important;
+            color: #111827 !important;
+        }
 
-div[data-baseweb="select"] div[role="button"] {
-    color: #0f172a;
-    font-weight: 500;
-}
+        /* Inputs em geral com borda arredondada e glass */
+        input, textarea {
+            border-radius: 18px !important;
+        }
 
-div[role="listbox"] {
-    background: rgba(255,255,255,0.95) !important;
-    color: #0f172a !important;
-    border-radius: 22px !important;
-    box-shadow:
-        0 20px 45px rgba(15,23,42,0.35),
-        0 0 0 1px rgba(255,255,255,0.95);
-    backdrop-filter: blur(22px) saturate(170%);
-    -webkit-backdrop-filter: blur(22px) saturate(170%);
-}
-
-div[role="option"][aria-selected="true"] {
-    background: linear-gradient(135deg, #f97316, #fb7185) !important;
-    color: #ffffff !important;
-}
-
-/* TABLES – listas de candidatos, vagas, pipeline etc. */
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 0.4rem;
-    margin-bottom: 0.2rem;
-    background: linear-gradient(
-        135deg,
-        rgba(15,23,42,0.87),
-        rgba(15,23,42,0.92)
-    );
-    border-radius: 26px;
-    overflow: hidden;
-    box-shadow:
-        0 26px 60px rgba(15,23,42,0.70),
-        0 0 0 1px rgba(255,255,255,0.15);
-}
-
-th, td {
-    padding: 10px 14px;
-    text-align: left;
-    font-size: 0.92rem;
-}
-
-thead tr {
-    background: linear-gradient(135deg, #0f172a, #020617);
-}
-
-th {
-    color: #e5e7eb;
-    font-weight: 600;
-    border-bottom: 1px solid rgba(148,163,184,0.55);
-}
-
-tbody tr:nth-child(even) {
-    background-color: rgba(15,23,42,0.96);
-}
-
-tbody tr:nth-child(odd) {
-    background-color: rgba(15,23,42,0.90);
-}
-
-td {
-    color: #f9fafb;
-    border-bottom: 1px solid rgba(30,41,59,0.85);
-}
-
-tbody tr:last-child td {
-    border-bottom: none;
-}
-
-.modo-atual-label {
-    font-size: 0.95rem;
-    margin-top: 0.1rem;
-    margin-bottom: 0.8rem;
-}
-</style>
-"""
-
-st.markdown(GLASS_CSS, unsafe_allow_html=True)
-
-# -------------------------------------------------
-# NAV ITEMS
-# -------------------------------------------------
-
-NAV_ITEMS = [
-    {"id": "dashboard",  "label": "Dashboard",  "icon": "📊"},
-    {"id": "clientes",   "label": "Clientes",   "icon": "🏙️"},
-    {"id": "candidatos", "label": "Candidatos", "icon": "👤"},
-    {"id": "vagas",      "label": "Vagas",      "icon": "🧩"},
-    {"id": "pipeline",   "label": "Pipeline",   "icon": "📌"},
-    {"id": "acessos",    "label": "Acessos",    "icon": "🔐"},
-    {"id": "financeiro", "label": "Financeiro", "icon": "💰"},
-]
-
-
-def draw_top_nav(active_id: str) -> str:
-    st.markdown('<div class="app-nav-bar"><div class="app-nav-inner">',
-                unsafe_allow_html=True)
-
-    cols = st.columns(len(NAV_ITEMS))
-    new_active = active_id
-
-    for col, item in zip(cols, NAV_ITEMS):
-        label = f"{item['icon']} {item['label']}"
-        key = f"nav_{item['id']}"
-        with col:
-            if st.button(label, use_container_width=True, key=key):
-                new_active = item["id"]
-
-    st.markdown("</div></div>", unsafe_allow_html=True)
-    return new_active
-
-
-def main():
-    # 1) Autenticação: auth.run cuida do login na tela
-    auth.run()
-
-    # 2) Descobre usuário logado via session_state
-    usuario = (
-        st.session_state.get("usuario_logado")
-        or st.session_state.get("user")
-        or st.session_state.get("usuario")
-        or st.session_state.get("login")
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
 
-    # Se ainda não tem usuário, significa que estamos só na tela de login
-    if not usuario:
+
+# ---------------------------------------------------------
+# NAVEGAÇÃO PRINCIPAL
+# ---------------------------------------------------------
+def render_main_nav() -> str:
+    """Desenha o menu superior (Dashboard, Clientes, etc.) e retorna a seção atual."""
+    if "main_section" not in st.session_state:
+        st.session_state["main_section"] = "candidatos"
+
+    current = st.session_state["main_section"]
+
+    nav_items = [
+        ("dashboard", "Dashboard", "📊"),
+        ("clientes", "Clientes", "🏙️"),
+        ("candidatos", "Candidatos", "👤"),
+        ("vagas", "Vagas", "🧩"),
+        ("pipeline", "Pipeline", "📌"),
+        ("acessos", "Acessos", "🔐"),
+        ("financeiro", "Financeiro", "💰"),
+    ]
+
+    st.markdown('<div class="main-nav-wrapper"><div class="main-nav-row">', unsafe_allow_html=True)
+    cols = st.columns(len(nav_items))
+
+    for col, (key, label, icon) in zip(cols, nav_items):
+        btn_key = f"nav_{key}"
+        active_class = " nav-active" if key == current else ""
+        with col:
+            st.markdown(f'<div class="stButton{active_class}">', unsafe_allow_html=True)
+            clicked = st.button(f"{icon} {label}", key=btn_key, use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+            if clicked:
+                st.session_state["main_section"] = key
+                current = key
+
+    st.markdown("</div></div>", unsafe_allow_html=True)
+    return current
+
+
+def render_actions_row() -> None:
+    """Linha logo abaixo do menu com atalho para Parecer e botão de Sair."""
+
+    st.markdown('<div class="glass-actions-row">', unsafe_allow_html=True)
+    col1, col2 = st.columns([1, 0.5])
+
+    with col1:
+        if st.button("📄 Parecer", key="action_parecer", use_container_width=True):
+            st.session_state["main_section"] = "parecer"
+
+    with col2:
+        if st.button("⏏ Sair", key="action_logout", use_container_width=True):
+            # Logout bem simples: limpa sessão e recarrega
+            keys = list(st.session_state.keys())
+            for k in keys:
+                if k != "_is_running_with_streamlit":
+                    del st.session_state[k]
+            st.experimental_rerun()
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+def render_user_badge(username: str) -> None:
+    """Mostra o usuário logado no canto inferior direito (badge pequeno)."""
+    st.markdown(
+        f"""
+        <div class="user-badge">
+            <span class="emoji">👤</span>
+            <span>{username}</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# ---------------------------------------------------------
+# ROTEADOR DE SEÇÕES
+# ---------------------------------------------------------
+def route_section(section: str) -> None:
+    if section == "dashboard":
+        try:
+            dashboard.run()
+        except Exception:
+            st.info("Dashboard ainda não configurado.")
+    elif section == "clientes":
+        clientes.run()
+    elif section == "candidatos":
+        candidatos.run()
+    elif section == "vagas":
+        vagas.run()
+    elif section == "pipeline":
+        pipeline_mod.run()
+    elif section == "acessos":
+        acessos.run()
+    elif section == "financeiro":
+        financeiro.run()
+    elif section == "parecer":
+        parecer_mod.run()
+    else:
+        candidatos.run()
+
+
+# ---------------------------------------------------------
+# MAIN
+# ---------------------------------------------------------
+def main() -> None:
+    st.set_page_config(
+        page_title="GAC - Gerenciador Alvim Consultoria",
+        layout="wide",
+    )
+
+    inject_global_css()
+
+    # Autenticação
+    username: Optional[str] = auth.run()
+    if not username:
+        # auth.run() já mostra tela de login se não autenticado
         return
 
-    # 3) Guarda para outros módulos se quiser
-    st.session_state["usuario_logado"] = usuario
+    # Navegação principal
+    section = render_main_nav()
+    render_actions_row()
 
-    # 4) Página ativa (navegação principal)
-    if "gac_active_page" not in st.session_state:
-        st.session_state["gac_active_page"] = "dashboard"
-
-    active_page = st.session_state["gac_active_page"]
-
-    # 5) Barra superior
-    active_page = draw_top_nav(active_page)
-    st.session_state["gac_active_page"] = active_page
-
-    # 6) Linha com usuário / botão Parecer / sair
-    c1, c2, c3 = st.columns([1.4, 1.2, 0.8])
-
-    with c1:
-        st.markdown(
-            f"""
-            <div class="glass-card user-row">
-                <div class="user-label">
-                    <strong>Usuário:</strong> {usuario}
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-    with c2:
-        if st.button("📄 Parecer", use_container_width=True, key="btn_ir_parecer"):
-            st.session_state["gac_active_page"] = "parecer"
-            active_page = "parecer"
-
-    with c3:
-        if st.button("⏏ Sair", use_container_width=True, key="btn_logout"):
-            if hasattr(auth, "logout"):
-                auth.logout()
-            if "gac_active_page" in st.session_state:
-                del st.session_state["gac_active_page"]
-            st.rerun()
-
-    # 7) Indicador de módulo atual
-    label_map = {
-        "dashboard": "Dashboard",
+    # Indicador textual do módulo atual (discreto)
+    titulo_map = {
+        "dashboard": "Dashboard Geral",
         "clientes": "Cadastro de Clientes",
         "candidatos": "Cadastro de Candidatos",
         "vagas": "Gestão de Vagas",
@@ -371,47 +328,21 @@ def main():
         "financeiro": "Financeiro",
         "parecer": "Parecer de Triagem",
     }
-    nome_modo = label_map.get(active_page, active_page)
+    titulo_atual = titulo_map.get(section, "Módulo atual")
 
-    st.markdown(
-        f'<div class="modo-atual-label"><strong>Módulo atual:</strong> {nome_modo}</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"**Módulo atual:** {titulo_atual}")
+    st.markdown("---")
 
-    # 8) Roteamento dos módulos
-    if active_page == "dashboard":
-        try:
-            dashboard.run()
-        except Exception:
-            st.info("Dashboard ainda não implementado.")
+    # Conteúdo da seção
+    route_section(section)
 
-    elif active_page == "clientes":
-        clientes.run()
-
-    elif active_page == "candidatos":
-        candidatos.run()
-
-    elif active_page == "vagas":
-        vagas.run()
-
-    elif active_page == "pipeline":
-        pipeline_mod.run()
-
-    elif active_page == "acessos":
-        acessos.run()
-
-    elif active_page == "financeiro":
-        financeiro.run()
-
-    elif active_page == "parecer":
-        parecer_mod.run()
-
-    else:
-        st.write("Módulo não reconhecido:", active_page)
+    # Badge de usuário no final da página
+    render_user_badge(username)
 
 
 if __name__ == "__main__":
     main()
+
 
 
 
