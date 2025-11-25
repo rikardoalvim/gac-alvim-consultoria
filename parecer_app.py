@@ -3,10 +3,8 @@
 # App principal (roteamento + layout iOS glass)
 # ================================
 
-import os
 import streamlit as st
 
-# Importa módulos internos
 from modules import (
     auth,
     dashboard,
@@ -37,7 +35,6 @@ st.set_page_config(
 
 GLASS_CSS = """
 <style>
-/* Remove o excesso de padding padrão do Streamlit */
 .main .block-container {
     padding-top: 1.5rem;
     padding-bottom: 2rem;
@@ -46,7 +43,6 @@ GLASS_CSS = """
     max-width: 1400px;
 }
 
-/* Fundo gradiente tipo iOS */
 .stApp {
     background: radial-gradient(circle at top left, #e0f7ff 0, #d8f5e9 35%, #f6e6ff 100%);
     color: #0f172a;
@@ -54,18 +50,15 @@ GLASS_CSS = """
                  "Segoe UI", sans-serif;
 }
 
-/* Esconde header padrão do Streamlit */
 header[data-testid="stHeader"] {
     background: transparent;
 }
 
-/* Títulos */
 h1, h2, h3, h4 {
     color: #0f172a;
     font-weight: 700;
 }
 
-/* Cartão de usuário e cards em geral */
 .glass-card {
     background: linear-gradient(135deg, rgba(255,255,255,0.70), rgba(255,255,255,0.35));
     border-radius: 28px;
@@ -77,7 +70,6 @@ h1, h2, h3, h4 {
     -webkit-backdrop-filter: blur(24px) saturate(160%);
 }
 
-/* BOTÕES GLASS (todos os st.button) */
 div[data-testid="stButton"] > button {
     border-radius: 999px;
     border: 1px solid rgba(255,255,255,0.8);
@@ -98,7 +90,6 @@ div[data-testid="stButton"] > button {
                 background 0.18s ease-out;
 }
 
-/* Hover e "bounce" suave */
 div[data-testid="stButton"] > button:hover {
     transform: translateY(-2px) scale(1.01);
     box-shadow:
@@ -106,7 +97,6 @@ div[data-testid="stButton"] > button:hover {
         0 0 0 1px rgba(255,255,255,0.95);
 }
 
-/* Clicado */
 div[data-testid="stButton"] > button:active {
     transform: translateY(0px) scale(0.98);
     box-shadow:
@@ -116,7 +106,7 @@ div[data-testid="stButton"] > button:active {
 
 /* NAV BAR SUPERIOR */
 .app-nav-bar {
-    margin-bottom: 1.2rem;
+    margin-bottom: 0.6rem;
 }
 
 .app-nav-inner {
@@ -126,23 +116,16 @@ div[data-testid="stButton"] > button:active {
     align-items: center;
 }
 
-/* Ajusta os botões da barra de navegação para ficarem do mesmo tamanho visual */
 .app-nav-inner > div[data-testid="column"] > div {
     width: 100%;
 }
 
-/* Deixa o texto dos botões centralizado e mais clean */
-div[data-testid="stButton"] > button p {
-    margin: 0;
-}
-
-/* Linha com usuário, botão Parecer e Sair */
+/* Linha com usuário, parecer, sair */
 .user-row {
-    margin-top: 0.4rem;
-    margin-bottom: 1.6rem;
+    margin-top: 0.1rem;
+    margin-bottom: 1.0rem;
 }
 
-/* Label do usuário */
 .user-label {
     font-size: 0.95rem;
     color: #0f172a;
@@ -188,7 +171,7 @@ div[data-testid="stTextArea"] textarea {
         0 0 0 1px rgba(255,255,255,0.88);
 }
 
-/* SELECTS / MULTISELECT – fundo claro, tipo glass */
+/* SELECTS / MULTISELECT */
 div[data-baseweb="select"] > div {
     background: linear-gradient(
         135deg,
@@ -205,13 +188,11 @@ div[data-baseweb="select"] > div {
     color: #0f172a;
 }
 
-/* Texto dentro do select */
 div[data-baseweb="select"] div[role="button"] {
     color: #0f172a;
     font-weight: 500;
 }
 
-/* Dropdown da lista (onde hoje está preto) */
 div[role="listbox"] {
     background: rgba(255,255,255,0.95) !important;
     color: #0f172a !important;
@@ -223,13 +204,12 @@ div[role="listbox"] {
     -webkit-backdrop-filter: blur(22px) saturate(170%);
 }
 
-/* Item selecionado do dropdown */
 div[role="option"][aria-selected="true"] {
     background: linear-gradient(135deg, #f97316, #fb7185) !important;
     color: #ffffff !important;
 }
 
-/* TABLES – usadas nas listas (candidatos, vagas, pipeline etc.) */
+/* TABLES – listas de candidatos, vagas, pipeline etc. */
 table {
     width: 100%;
     border-collapse: collapse;
@@ -276,12 +256,10 @@ td {
     border-bottom: 1px solid rgba(30,41,59,0.85);
 }
 
-/* Última linha da tabela sem borda inferior pesada */
 tbody tr:last-child td {
     border-bottom: none;
 }
 
-/* Modo atual label */
 .modo-atual-label {
     font-size: 0.95rem;
     margin-top: 0.1rem;
@@ -308,16 +286,10 @@ NAV_ITEMS = [
 
 
 def draw_top_nav(active_id: str) -> str:
-    """
-    Desenha a barra superior de navegação (Dashboard, Clientes, etc)
-    e retorna o id da página ativa (caso tenha sido clicada).
-    """
-    # Container visual
     st.markdown('<div class="app-nav-bar"><div class="app-nav-inner">',
                 unsafe_allow_html=True)
 
     cols = st.columns(len(NAV_ITEMS))
-
     new_active = active_id
 
     for col, item in zip(cols, NAV_ITEMS):
@@ -332,40 +304,41 @@ def draw_top_nav(active_id: str) -> str:
 
 
 def main():
-    # -------------------------------------------------
-    # AUTENTICAÇÃO
-    # -------------------------------------------------
-    # auth.run() deve mostrar tela de login se necessário
-    # e retornar o nome do usuário logado (str) quando ok.
-    usuario = auth.run()
+    # 1) Autenticação: auth.run cuida do login na tela
+    auth.run()
+
+    # 2) Descobre usuário logado via session_state
+    usuario = (
+        st.session_state.get("usuario_logado")
+        or st.session_state.get("user")
+        or st.session_state.get("usuario")
+        or st.session_state.get("login")
+    )
+
+    # Se ainda não tem usuário, significa que estamos só na tela de login
     if not usuario:
-        # auth.run já tratou a tela de login
         return
 
-    # Guarda no session_state para outros módulos (se quiser usar)
+    # 3) Guarda para outros módulos se quiser
     st.session_state["usuario_logado"] = usuario
 
-    # Página ativa (navegação principal)
+    # 4) Página ativa (navegação principal)
     if "gac_active_page" not in st.session_state:
         st.session_state["gac_active_page"] = "dashboard"
 
     active_page = st.session_state["gac_active_page"]
 
-    # -------------------------------------------------
-    # NAV SUPERIOR
-    # -------------------------------------------------
+    # 5) Barra superior
     active_page = draw_top_nav(active_page)
     st.session_state["gac_active_page"] = active_page
 
-    # -------------------------------------------------
-    # LINHA COM USUÁRIO / PARECER / SAIR
-    # -------------------------------------------------
+    # 6) Linha com usuário / botão Parecer / sair
     c1, c2, c3 = st.columns([1.4, 1.2, 0.8])
 
     with c1:
         st.markdown(
             f"""
-            <div class="glass-card">
+            <div class="glass-card user-row">
                 <div class="user-label">
                     <strong>Usuário:</strong> {usuario}
                 </div>
@@ -375,24 +348,19 @@ def main():
         )
 
     with c2:
-        # Botão grande que leva direto para o módulo de parecer
         if st.button("📄 Parecer", use_container_width=True, key="btn_ir_parecer"):
             st.session_state["gac_active_page"] = "parecer"
             active_page = "parecer"
 
     with c3:
         if st.button("⏏ Sair", use_container_width=True, key="btn_logout"):
-            # Delega para o auth limpar a sessão, se houver lógica lá
             if hasattr(auth, "logout"):
                 auth.logout()
-            # Limpa flag local e força reload
             if "gac_active_page" in st.session_state:
                 del st.session_state["gac_active_page"]
             st.rerun()
 
-    # -------------------------------------------------
-    # INDICADOR DE MÓDULO ATUAL
-    # -------------------------------------------------
+    # 7) Indicador de módulo atual
     label_map = {
         "dashboard": "Dashboard",
         "clientes": "Cadastro de Clientes",
@@ -410,15 +378,12 @@ def main():
         unsafe_allow_html=True,
     )
 
-    # -------------------------------------------------
-    # ROTEAMENTO DOS MÓDULOS
-    # -------------------------------------------------
+    # 8) Roteamento dos módulos
     if active_page == "dashboard":
-        # Se você ainda não tiver um módulo dashboard, comente essa linha
         try:
             dashboard.run()
         except Exception:
-            st.info("Dashboard ainda não implementado. :)")
+            st.info("Dashboard ainda não implementado.")
 
     elif active_page == "clientes":
         clientes.run()
@@ -447,8 +412,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
 
 
 
