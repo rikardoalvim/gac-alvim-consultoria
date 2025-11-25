@@ -1,6 +1,9 @@
 from datetime import datetime
+import unicodedata
+import json
 
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 
 from .core import (
@@ -14,9 +17,67 @@ from .core import (
 )
 
 
+def limpar_texto(texto: str) -> str:
+    """
+    Remove caracteres estranhos/invisíveis e normaliza o texto
+    para evitar problemas ao colar em LinkedIn / WhatsApp.
+    """
+    if not texto:
+        return ""
+
+    # Normaliza unicode
+    texto = unicodedata.normalize("NFKC", str(texto))
+
+    limpo = []
+    for ch in texto:
+        # Mantém quebras de linha / tab
+        if ch in "\n\r\t":
+            limpo.append(ch)
+            continue
+
+        # Remove caracteres de controle (categoria C do Unicode)
+        cat = unicodedata.category(ch)
+        if cat and cat[0] == "C":
+            continue
+
+        # ASCII "normal"
+        if ord(ch) < 128:
+            limpo.append(ch)
+            continue
+
+        # Letras acentuadas comuns em PT-BR
+        if ch in "áàãâéêíóôõúçÁÀÃÂÉÊÍÓÔÕÚÇ":
+            limpo.append(ch)
+            continue
+
+        # Para outros caracteres esquisitos (tipo Ɵ, etc.), tenta decompôr
+        decomp = unicodedata.normalize("NFKD", ch)
+        base = "".join(c for c in decomp if ord(c) < 128 and c.isprintable())
+        limpo.append(base)
+
+    return "".join(limpo).strip()
+
+
+def copiar_para_clipboard(texto: str):
+    """
+    Copia texto para a área de transferência usando JavaScript.
+    O texto já deve vir limpo.
+    """
+    js = f"""
+    <script>
+    navigator.clipboard.writeText({json.dumps(texto)});
+    </script>
+    """
+    # Altura 0 para não aparecer nada visualmente
+    components.html(js, height=0)
+
+
 def run():
     st.header("📂 Cadastro de Vagas")
 
+    # ============================
+    # CLIENTE DA VAGA
+    # ============================
     df_cli = carregar_clientes()
     if df_cli.empty:
         st.warning("Cadastre ao menos um cliente na aba de Clientes.")
@@ -35,6 +96,9 @@ def run():
         )
         nome_cliente_sel = opcoes_cli[id_cliente_sel]
 
+    # ============================
+    # NOVA VAGA
+    # ============================
     col1, col2 = st.columns(2)
     with col1:
         cargo = st.text_input("Cargo da vaga")
@@ -43,9 +107,15 @@ def run():
             ["CLT", "PJ", "Aprendiz", "Estatutário", "Estagiário"],
         )
     with col2:
-        data_abertura = st.date_input("Data de abertura", value=datetime.today()).strftime("%Y-%m-%d")
-        data_fechamento = st.date_input("Data de fechamento (pode ajustar depois)", value=datetime.today()).strftime("%Y-%m-%d")
-        status = st.selectbox("Status da vaga", ["Aberta", "Em andamento", "Encerrada"])
+        data_abertura = st.date_input(
+            "Data de abertura", value=datetime.today()
+        ).strftime("%Y-%m-%d")
+        data_fechamento = st.date_input(
+            "Data de fechamento (pode ajustar depois)", value=datetime.today()
+        ).strftime("%Y-%m-%d")
+        status = st.selectbox(
+            "Status da vaga", ["Aberta", "Em andamento", "Encerrada"]
+        )
 
     descricao = st.text_area(
         "Descrição detalhada da vaga",
@@ -70,6 +140,9 @@ def run():
             st.success(f"Vaga cadastrada com ID {novo_id}.")
             st.rerun()
 
+    # ============================
+    # EDIÇÃO RÁPIDA DAS VAGAS
+    # ============================
     st.markdown("---")
     st.subheader("📋 Vagas cadastradas (edição rápida)")
 
@@ -95,6 +168,9 @@ def run():
             except Exception as e:
                 st.error(f"Erro ao salvar vagas: {e}")
 
+    # ============================
+    # TEXTO PARA LINKEDIN / WHATSAPP
+    # ============================
     st.markdown("---")
     st.subheader("📝 Texto da vaga para LinkedIn / WhatsApp")
 
@@ -113,30 +189,54 @@ def run():
             key="vaga_txt_sel",
         )
         row_v = df_vagas[df_vagas["id_vaga"] == str(id_v_sel)].iloc[0]
-        cliente_txt = row_v["nome_cliente"]
-        cargo_txt = row_v["cargo"]
-        modalidade_txt = row_v["modalidade"]
-        desc_txt = row_v["descricao_vaga"]
 
-        texto_linkedin = (
-            f"**Vaga: {cargo_txt}**\n"
-            f"**Cliente: {cliente_txt}**\n"
-            f"*Modalidade de contratação: {modalidade_txt}*\n\n"
-            f"{desc_txt}\n"
+        cliente_txt = limpar_texto(row_v["nome_cliente"])
+        cargo_txt = limpar_texto(row_v["cargo"])
+        modalidade_txt = limpar_texto(row_v["modalidade"])
+        desc_txt = limpar_texto(row_v["descricao_vaga"])
+
+        # ---------- FORMATAÇÃO ESPECIAL LINKEDIN ----------
+        texto_linkedin = limpar_texto(
+f"""📌 Oportunidade: {cargo_txt}
+🏢 Empresa: {cliente_txt}
+📍 Modalidade: {modalidade_txt}
+
+📝 Sobre a vaga:
+{desc_txt}
+
+👉 Interessados(as), enviem o currículo atualizado e/ou mensagem direta para saber mais detalhes sobre a oportunidade.
+"""
         )
-        texto_whats = (
-            f"*Vaga: {cargo_txt}*\n"
-            f"*Cliente: {cliente_txt}*\n"
-            f"_Modalidade de contratação: {modalidade_txt}_\n\n"
-            f"{desc_txt}\n"
+
+        # ---------- FORMATAÇÃO ESPECIAL WHATSAPP ----------
+        texto_whats = limpar_texto(
+f"""*Vaga:* {cargo_txt}
+*Empresa:* {cliente_txt}
+*Modalidade:* {modalidade_txt}
+
+📝 *Sobre a vaga:*
+{desc_txt}
+
+Se tiver interesse, me envie seu *currículo atualizado* ou uma mensagem aqui mesmo para conversarmos melhor. 🙂
+"""
         )
 
-        st.markdown("**Texto sugerido para LinkedIn:**")
-        st.text_area("LinkedIn", value=texto_linkedin, height=200, key="vaga_txt_linkedin")
+        st.success("Selecione abaixo para qual canal você quer copiar o texto:")
 
-        st.markdown("**Texto sugerido para WhatsApp:**")
-        st.text_area("WhatsApp", value=texto_whats, height=200, key="vaga_txt_whats")
+        colb1, colb2 = st.columns(2)
+        with colb1:
+            if st.button("📋 Copiar texto para LinkedIn", use_container_width=True):
+                copiar_para_clipboard(texto_linkedin)
+                st.info("Texto para LinkedIn copiado! É só colar no post.")
 
+        with colb2:
+            if st.button("📋 Copiar texto para WhatsApp", use_container_width=True):
+                copiar_para_clipboard(texto_whats)
+                st.info("Texto para WhatsApp copiado! É só colar na conversa ou status.")
+
+    # ============================
+    # VÍNCULO VAGA x CANDIDATOS
+    # ============================
     st.markdown("---")
     st.subheader("🔗 Vincular candidatos à vaga")
 
@@ -158,10 +258,16 @@ def run():
     )
 
     df_vinc = carregar_vaga_candidatos()
-    vinculados = df_vinc[df_vinc["id_vaga"] == str(id_vaga_vinc)] if not df_vinc.empty else pd.DataFrame(columns=["id_vaga", "id_candidato", "data_vinculo", "observacao"])
-    ids_exist = set(vinculados["id_candidato"].tolist())
+    if not df_vinc.empty:
+        vinculados = df_vinc[df_vinc["id_vaga"] == str(id_vaga_vinc)]
+    else:
+        vinculados = pd.DataFrame(
+            columns=["id_vaga", "id_candidato", "data_vinculo", "observacao"]
+        )
 
+    ids_exist = set(vinculados["id_candidato"].tolist())
     opcoes_cand = {str(row["id_candidato"]): row["nome"] for _, row in df_cand.iterrows()}
+
     multi = st.multiselect(
         "Candidatos da vaga:",
         options=list(opcoes_cand.keys()),
@@ -178,15 +284,21 @@ def run():
         agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         novos = []
         for id_c in multi:
-            novos.append({
-                "id_vaga": str(id_vaga_vinc),
-                "id_candidato": str(id_c),
-                "data_vinculo": agora,
-                "observacao": "",
-            })
+            novos.append(
+                {
+                    "id_vaga": str(id_vaga_vinc),
+                    "id_candidato": str(id_c),
+                    "data_vinculo": agora,
+                    "observacao": "",
+                }
+            )
 
         df_novos = pd.DataFrame(novos)
-        df_final = pd.concat([df_todos, df_novos], ignore_index=True) if not df_todos.empty else df_novos
+        df_final = (
+            pd.concat([df_todos, df_novos], ignore_index=True)
+            if not df_todos.empty
+            else df_novos
+        )
         salvar_vaga_candidatos(df_final)
         st.success("Vínculos atualizados.")
         st.rerun()
@@ -203,3 +315,4 @@ def run():
             how="left",
         )
         st.dataframe(df_show, use_container_width=True)
+
