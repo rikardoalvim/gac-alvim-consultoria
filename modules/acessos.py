@@ -75,14 +75,22 @@ def run():
             )
 
             if id_cli_sel in opcoes_cli:
-                id_cliente = id_cli_sel
+                id_cliente = str(id_cli_sel)
                 nome_cliente = opcoes_cli[id_cli_sel]
 
-                # Se já existe acesso para esse cliente, carrega o último
-                if not df_acessos.empty and "id_cliente" in df_acessos.columns:
-                    df_cli_acessos = df_acessos[df_acessos["id_cliente"] == id_cliente]
+                # 🔴 AQUI ERA O PROBLEMA: comparação sem cast
+                if (
+                    df_acessos is not None
+                    and not df_acessos.empty
+                    and "id_cliente" in df_acessos.columns
+                ):
+                    # Sempre compara como STRING
+                    df_acessos["id_cliente"] = df_acessos["id_cliente"].astype(str)
+                    df_cli_acessos = df_acessos[
+                        df_acessos["id_cliente"] == str(id_cliente)
+                    ]
                     if not df_cli_acessos.empty:
-                        # última linha (ou poderia ordenar por data/id)
+                        # Pega o último registro (poderia ordenar por data se quiser)
                         existing_row = df_cli_acessos.iloc[-1]
             else:
                 # opção manual
@@ -90,15 +98,19 @@ def run():
                 id_cliente = ""
 
     with col2:
+        nome_usuario_default = ""
+        if existing_row is not None and "nome_usuario" in existing_row.index:
+            nome_usuario_default = str(existing_row["nome_usuario"])
+
         nome_usuario = st.text_input(
             "Usuário / Responsável (opcional)",
             placeholder="Ex.: Rikardo, Stephanie, time financeiro...",
-            value=(existing_row["nome_usuario"] if existing_row is not None and "nome_usuario" in existing_row else ""),
+            value=nome_usuario_default,
         )
 
     # Bloco de notas grande – se já houver cadastro, preenche com o texto atual
     texto_inicial = ""
-    if existing_row is not None and "observacoes" in existing_row:
+    if existing_row is not None and "observacoes" in existing_row.index:
         texto_inicial = str(existing_row["observacoes"])
 
     observacoes = st.text_area(
@@ -116,26 +128,30 @@ def run():
                 st.error("Informe ao menos o cliente/empresa ou o bloco de notas.")
             else:
                 try:
-                    # Se já havia um registro de acesso para esse cliente, atualiza
+                    # Já existe registro para esse cliente? -> ATUALIZA
                     if existing_row is not None and "id_acesso" in existing_row.index:
                         df_total = carregar_acessos()
-                        mask = df_total["id_acesso"] == existing_row["id_acesso"]
+                        df_total["id_acesso"] = df_total["id_acesso"].astype(str)
+                        id_acesso_atual = str(existing_row["id_acesso"])
 
+                        mask = df_total["id_acesso"] == id_acesso_atual
                         if not mask.any():
                             st.error("Registro de acesso não encontrado para atualização.")
                         else:
                             df_total.loc[mask, "nome_cliente"] = nome_cliente.strip()
-                            df_total.loc[mask, "id_cliente"] = id_cliente
-                            df_total.loc[mask, "nome_usuario"] = nome_usuario.strip() or nome_cliente.strip()
+                            df_total.loc[mask, "id_cliente"] = str(id_cliente)
+                            df_total.loc[mask, "nome_usuario"] = (
+                                nome_usuario.strip() or nome_cliente.strip()
+                            )
                             df_total.loc[mask, "observacoes"] = observacoes.strip()
-                            # Mantém demais campos (sistema, tipo_acesso, datas, status) como estão
+                            # Mantém demais campos (sistema, tipo_acesso, datas, status)
                             df_total.to_csv(LOG_ACESSOS, sep=";", index=False, encoding="utf-8")
                             st.success("Acesso atualizado com sucesso!")
                     else:
                         # Não havia ainda um acesso para esse cliente -> cria novo
                         hoje = datetime.today().strftime("%Y-%m-%d")
                         novo_id = registrar_acesso(
-                            id_cliente=id_cliente,
+                            id_cliente=str(id_cliente),
                             nome_cliente=nome_cliente.strip(),
                             id_candidato="",
                             nome_usuario=nome_usuario.strip() or nome_cliente.strip(),
@@ -180,9 +196,12 @@ def run():
 
     if filtro_cli.strip():
         low = filtro_cli.strip().lower()
+        nome_cli_col = df_view.get("nome_cliente", "")
+        obs_col = df_view.get("observacoes", "")
+
         df_view = df_view[
-            df_view.get("nome_cliente", "").astype(str).str.lower().str.contains(low)
-            | df_view.get("observacoes", "").astype(str).str.lower().str.contains(low)
+            nome_cli_col.astype(str).str.lower().str.contains(low)
+            | obs_col.astype(str).str.lower().str.contains(low)
         ]
 
     if df_view.empty:
@@ -199,6 +218,11 @@ def run():
     df_view = df_view.astype(str)
 
     render_tabela_html(
+        df_view,
+        columns=["id_acesso", "nome_cliente", "nome_usuario", "observ_preview"],
+        headers=["ID", "Cliente", "Usuário", "Resumo do bloco de notas"],
+    )
+
         df_view,
         columns=["id_acesso", "nome_cliente", "nome_usuario", "observ_preview"],
         headers=["ID", "Cliente", "Usuário", "Resumo do bloco de notas"],
