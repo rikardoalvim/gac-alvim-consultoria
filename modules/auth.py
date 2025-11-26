@@ -135,7 +135,7 @@ def _render_change_password(username: str, df: pd.DataFrame) -> None:
             # Limpa sessão de auth e volta pra tela de login
             for k in ["auth_username", "auth_role", "auth_need_change"]:
                 st.session_state.pop(k, None)
-            st.experimental_rerun()
+            st.rerun()
 
     st.stop()
 
@@ -167,7 +167,7 @@ def _render_login(df: pd.DataFrame) -> None:
                     st.session_state["auth_username"] = row["username"]
                     st.session_state["auth_role"] = row.get("perfil", "OPERACOES_GERAL")
                     st.session_state["auth_need_change"] = bool(int(row.get("must_change", 0)))
-                    st.experimental_rerun()
+                    st.rerun()
 
     with col2:
         st.markdown(
@@ -217,6 +217,7 @@ def run() -> Optional[str]:
     # Caso não haja usuário na sessão, mostra login
     _render_login(df)
     return None
+
 
 
 
