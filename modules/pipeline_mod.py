@@ -1,154 +1,35 @@
+import os
 from datetime import datetime
 
 import pandas as pd
 import streamlit as st
 
 from .core import (
+    carregar_pareceres_log,
     carregar_vaga_candidatos,
-    salvar_vaga_candidatos,
     carregar_vagas,
     carregar_candidatos,
-    carregar_pareceres_log,
+    salvar_vaga_candidatos,
+    montar_link_whatsapp,
 )
 
-# usa o mesmo render de tabela glass das vagas
-from .vagas import render_tabela_html
+# Tenta importar catálogo de status
+try:
+    from . import status_pipeline
+except Exception:
+    status_pipeline = None
 
 
-def run():
-    st.header("📌 Pipeline de Candidatos")
-
-    # ============================================================
-    # 0) CARREGAR BASES
-    # ============================================================
-    df_vinc = carregar_vaga_candidatos()
-    if df_vinc.empty:
-        st.info("Nenhum vínculo vaga × candidato encontrado. Use a tela de Vagas > Vincular candidatos.")
-        return
-
-    df_vagas = carregar_vagas()
-    df_cand = carregar_candidatos()
-
-    if df_vagas.empty or df_cand.empty:
-        st.info("É necessário ter vagas e candidatos cadastrados para montar o pipeline.")
-        return
-
-    df_vinc = df_vinc.copy()
-    df_vagas = df_vagas.copy()
-    df_cand = df_cand.copy()
-
-    df_vinc["id_vaga"] = df_vinc["id_vaga"].astype(str)
-    df_vinc["id_candidato"] = df_vinc["id_candidato"].astype(str)
-
-    df_vagas["id_vaga"] = df_vagas["id_vaga"].astype(str)
-    df_cand["id_candidato"] = df_cand["id_candidato"].astype(str)
-
-    # defaults das colunas de pipeline
-    defaults_cols = {
-        "status_etapa": "Em avaliação",
-        "status_contratacao": "Pendente",
-        "motivo_decline": "",
-    }
-
-    for col, default in defaults_cols.items():
-        if col not in df_vinc.columns:
-            df_vinc[col] = default
-        df_vinc[col] = df_vinc[col].fillna(default)
-
-    # ============================================================
-    # 1) MONTAR VISÃO DE PIPELINE (VAGA + CANDIDATO)
-    # ============================================================
-    df_pipeline = (
-        df_vinc
-        .merge(
-            df_vagas[["id_vaga", "nome_cliente", "cargo"]],
-            on="id_vaga",
-            how="left",
-        )
-        .merge(
-            df_cand[["id_candidato", "nome", "cidade"]],
-            on="id_candidato",
-            how="left",
-        )
-    )
-
-    for col, default in defaults_cols.items():
-        if col not in df_pipeline.columns:
-            df_pipeline[col] = default
-        df_pipeline[col] = df_pipeline[col].fillna(default)
-
-    # ordena pela data de vínculo (se existir)
-    if "data_vinculo" in df_pipeline.columns:
+def get_status_options():
+    """
+    Lê as opções de status/etapas do módulo status_pipeline, se existir.
+    Caso contrário, usa defaults.
+    """
+    if status_pipeline is not None and hasattr(status_pipeline, "get_pipeline_status_options"):
         try:
-            df_pipeline["_ord_data"] = pd.to_datetime(
-                df_pipeline["data_vinculo"], errors="coerce"
-            )
-            df_pipeline = df_pipeline.sort_values(
-                ["_ord_data", "nome_cliente", "cargo", "nome"],
-                ascending=[False, True, True, True],
-            )
+            return status_pipeline.get_pipeline_status_options()
         except Exception:
-            df_pipeline = df_pipeline.sort_values("data_vinculo", ascending=False)
-    else:
-        df_pipeline = df_pipeline.sort_values(["nome_cliente", "cargo", "nome"])
-
-    # ============================================================
-    # 1.1) LISTA EM ESTILO GLASS (APENAS VISUAL)
-    # ============================================================
-    st.subheader("📋 Visão geral do pipeline (vaga × candidato)")
-
-    colunas_lista = [
-        "data_vinculo",
-        "nome_cliente",
-        "cargo",
-        "nome",
-        "cidade",
-        "status_etapa",
-        "status_contratacao",
-        "motivo_decline",
-    ]
-    colunas_lista = [c for c in colunas_lista if c in df_pipeline.columns]
-
-    if not df_pipeline.empty and colunas_lista:
-        render_tabela_html(
-            df_pipeline,
-            columns=colunas_lista,
-            headers=[
-                "Data vínculo",
-                "Cliente",
-                "Cargo",
-                "Candidato",
-                "Cidade",
-                "Etapa",
-                "Status contratação",
-                "Motivo de declínio",
-            ],
-        )
-    else:
-        st.info("Nenhum registro para exibir na lista.")
-
-    st.markdown("---")
-
-    # ============================================================
-    # 2) EDIÇÃO (st.data_editor) – ATUALIZA APENAS NO CSV DE VÍNCULOS
-    # ============================================================
-    st.subheader("✏️ Atualizar status do pipeline")
-
-    # DataFrame base para edição (mostra só o necessário)
-    colunas_edicao = [
-        "id_vaga",
-        "id_candidato",
-        "nome_cliente",
-        "cargo",
-        "nome",
-        "cidade",
-        "status_etapa",
-        "status_contratacao",
-        "motivo_decline",
-    ]
-    colunas_edicao = [c for c in colunas_edicao if c in df_pipeline.columns]
-
-    df_edit_base = df_pipeline[colunas_edicao].copy()
+            pass
 
     etapa_opcoes = [
         "Em avaliação",
@@ -163,113 +44,390 @@ def run():
         "Reprovado",
         "Desistiu",
     ]
+    return etapa_opcoes, contratacao_opcoes
 
-    edited_df = st.data_editor(
-        df_edit_base,
-        hide_index=True,
-        use_container_width=True,
-        num_rows="fixed",
-        column_config={
-            "status_etapa": st.column_config.SelectboxColumn(
-                "Etapa",
-                options=etapa_opcoes,
-            ),
-            "status_contratacao": st.column_config.SelectboxColumn(
-                "Status contratação",
-                options=contratacao_opcoes,
-            ),
-            "motivo_decline": st.column_config.TextColumn(
-                "Motivo de declínio",
-            ),
-        },
-        key="pipeline_editor",
-    )
 
-    # ============================================================
-    # 3) SALVAR DE VOLTA NO CSV DE VÍNCULOS
-    # ============================================================
-    if st.button("💾 Salvar alterações do pipeline", use_container_width=True):
-        try:
-            df_save = df_vinc.copy()
+def build_pipeline_df():
+    """
+    Monta o DataFrame do pipeline a partir:
+    - vínculos vaga x candidato
+    - vagas
+    - candidatos
+    - último parecer por (id_candidato, id_vaga), se existir
+    """
+    df_vinc = carregar_vaga_candidatos()
+    df_vagas = carregar_vagas()
+    df_cand = carregar_candidatos()
+    df_par = carregar_pareceres_log()
 
-            # garante colunas de pipeline no CSV original
-            for col, default in defaults_cols.items():
-                if col not in df_save.columns:
-                    df_save[col] = default
-                df_save[col] = df_save[col].fillna(default)
+    if df_vinc.empty or df_vagas.empty or df_cand.empty:
+        return pd.DataFrame()
 
-            df_save["id_vaga"] = df_save["id_vaga"].astype(str)
-            df_save["id_candidato"] = df_save["id_candidato"].astype(str)
+    # Garante colunas de status no vínculo
+    for col in ["status_etapa", "status_contratacao", "motivo_decline"]:
+        if col not in df_vinc.columns:
+            df_vinc[col] = ""
 
-            for _, row_ed in edited_df.iterrows():
-                id_vaga = str(row_ed["id_vaga"])
-                id_candidato = str(row_ed["id_candidato"])
+    # Prepara pareceres com id_vaga
+    if not df_par.empty and "id_candidato" in df_par.columns:
+        df_par = df_par.copy()
+        df_par["id_candidato"] = df_par["id_candidato"].astype(str)
 
-                mask = (df_save["id_vaga"] == id_vaga) & (
-                    df_save["id_candidato"] == id_candidato
-                )
+        if "id_vaga" in df_par.columns:
+            df_par["id_vaga"] = df_par["id_vaga"].astype(str)
+        else:
+            df_par["id_vaga"] = ""
 
-                for col, default in defaults_cols.items():
-                    if col in row_ed:
-                        df_save.loc[mask, col] = row_ed.get(col, default)
+        df_par = df_par.sort_values("data_hora")
 
-                # data/hora da última atualização (opcional)
-                if "data_ultima_atualizacao" not in df_save.columns:
-                    df_save["data_ultima_atualizacao"] = ""
-                df_save.loc[mask, "data_ultima_atualizacao"] = datetime.now().strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
-
-            salvar_vaga_candidatos(df_save)
-            st.success("Pipeline atualizado com sucesso (dados gravados no vínculo vaga × candidato).")
-            st.rerun()
-        except Exception as e:
-            st.error(f"Erro ao salvar pipeline: {e}")
-
-    # ============================================================
-    # 4) CARREGAR PARECER NO FORMULÁRIO (MÓDULO PARECER)
-    # ============================================================
-    st.markdown("---")
-    st.subheader("🔁 Carregar parecer no formulário (módulo Parecer)")
-
-    df_sel = carregar_pareceres_log()
-    if df_sel.empty:
-        st.info("Nenhum parecer registrado no histórico.")
-        return
-
-    df_sel = df_sel.sort_values("data_hora", ascending=False)
-
-    opcoes = {
-        idx: f"{row.get('data_hora','')} - {row.get('nome','')} - {row.get('cargo','')} - {row.get('cliente','')}"
-        for idx, row in df_sel.iterrows()
-    }
-
-    escolha = st.selectbox(
-        "Escolha um parecer para carregar:",
-        options=list(opcoes.keys()),
-        format_func=lambda x: opcoes[x],
-        key="pip_sel_parecer",
-    )
-
-    if st.button("Carregar dados no formulário de Parecer", use_container_width=True):
-        row = df_sel.loc[escolha]
-
-        st.session_state["cliente"] = row.get("cliente", "")
-        st.session_state["cargo"] = row.get("cargo", "")
-        st.session_state["nome"] = row.get("nome", "")
-        st.session_state["localidade"] = row.get("localidade", "")
-        st.session_state["idade"] = str(row.get("idade", "") or "")
-        st.session_state["pretensao"] = row.get("pretensao", "")
-        st.session_state["linkedin"] = row.get("linkedin", "")
-        st.session_state["resumo_profissional"] = row.get("resumo_profissional", "")
-        st.session_state["analise_perfil"] = row.get("analise_perfil", "")
-        st.session_state["conclusao_texto"] = row.get("conclusao_texto", "")
-        st.session_state["id_candidato_selecionado"] = str(row.get("id_candidato", "") or "")
-
-        st.success(
-            "Dados carregados. Vá até Recrutamento & Seleção → aba **Parecer** para gerar/ajustar o laudo."
+        # Agrupamento por (id_candidato, id_vaga) para último parecer
+        df_par_latest = df_par.drop_duplicates(subset=["id_candidato", "id_vaga"], keep="last")
+        df_par_latest = df_par_latest[
+            [
+                "id_candidato",
+                "id_vaga",
+                "data_hora",
+                "cliente",
+                "cargo",
+                "caminho_arquivo",
+            ]
+        ]
+    else:
+        df_par_latest = pd.DataFrame(
+            columns=["id_candidato", "id_vaga", "data_hora", "cliente", "cargo", "caminho_arquivo"]
         )
 
+    df_vinc = df_vinc.copy()
+    df_vinc["id_vaga"] = df_vinc["id_vaga"].astype(str)
+    df_vinc["id_candidato"] = df_vinc["id_candidato"].astype(str)
+
+    df_vagas = df_vagas.copy()
+    df_vagas["id_vaga"] = df_vagas["id_vaga"].astype(str)
+
+    df_cand = df_cand.copy()
+    df_cand["id_candidato"] = df_cand["id_candidato"].astype(str)
+
+    # Base: vínculos + vaga + candidato
+    df_pipe = df_vinc.merge(
+        df_vagas[["id_vaga", "nome_cliente", "cargo", "status"]],
+        on="id_vaga",
+        how="left",
+    ).merge(
+        df_cand[["id_candidato", "nome", "telefone", "cidade"]],
+        on="id_candidato",
+        how="left",
+    )
+
+    # Join com último parecer por (id_candidato, id_vaga)
+    if not df_par_latest.empty:
+        df_pipe = df_pipe.merge(
+            df_par_latest,
+            on=["id_candidato", "id_vaga"],
+            how="left",
+            suffixes=("", "_parecer"),
+        )
+    else:
+        df_pipe["data_hora"] = ""
+        df_pipe["caminho_arquivo"] = ""
+
+    df_pipe.rename(
+        columns={
+            "data_hora": "ultima_data_parecer",
+        },
+        inplace=True,
+    )
+
+    # Ordena por data de vínculo, se existir
+    if "data_vinculo" in df_pipe.columns:
+        try:
+            df_pipe["data_vinculo_dt"] = pd.to_datetime(df_pipe["data_vinculo"])
+            df_pipe = df_pipe.sort_values("data_vinculo_dt", ascending=False)
+        except Exception:
+            df_pipe = df_pipe.sort_values(["nome_cliente", "cargo", "nome"])
+    else:
+        df_pipe = df_pipe.sort_values(["nome_cliente", "cargo", "nome"])
+
+    return df_pipe
+
+
+def run():
+    st.header("📌 Pipeline de Candidatos")
+
+    df_pipe = build_pipeline_df()
+    if df_pipe.empty:
+        st.info(
+            "Nenhum vínculo de vaga x candidato encontrado. "
+            "Cadastre vínculos na tela de Vagas e gere pareceres no módulo Parecer."
+        )
+        return
+
+    etapa_opcoes, contratacao_opcoes = get_status_options()
+
+    # ======================================
+    # FILTROS – estilo “card”
+    # ======================================
+    with st.expander("🎯 Filtros do pipeline", expanded=False):
+        colf1, colf2, colf3 = st.columns(3)
+        with colf1:
+            filtro_cliente = st.text_input("Cliente (contém)")
+        with colf2:
+            filtro_cargo = st.text_input("Cargo (contém)")
+        with colf3:
+            filtro_candidato = st.text_input("Candidato (contém)")
+
+        colf4, colf5 = st.columns(2)
+        with colf4:
+            etapa_filter = st.selectbox(
+                "Etapa do pipeline",
+                options=["(Todas)"] + etapa_opcoes,
+            )
+        with colf5:
+            status_filter = st.selectbox(
+                "Status de contratação",
+                options=["(Todos)"] + contratacao_opcoes,
+            )
+
+    df_view = df_pipe.copy()
+
+    if filtro_cliente.strip():
+        df_view = df_view[
+            df_view["nome_cliente"].fillna("").str.lower().str.contains(filtro_cliente.strip().lower())
+        ]
+    if filtro_cargo.strip():
+        df_view = df_view[
+            df_view["cargo"].fillna("").str.lower().str.contains(filtro_cargo.strip().lower())
+        ]
+    if filtro_candidato.strip():
+        df_view = df_view[
+            df_view["nome"].fillna("").str.lower().str.contains(filtro_candidato.strip().lower())
+        ]
+    if etapa_filter != "(Todas)":
+        df_view = df_view[df_view["status_etapa"] == etapa_filter]
+    if status_filter != "(Todos)":
+        df_view = df_view[df_view["status_contratacao"] == status_filter]
+
+    if df_view.empty:
+        st.warning("Nenhum registro encontrado com os filtros informados.")
+        return
+
+    # ======================================
+    # TABELA RESUMO – ESTILO GLASS
+    # ======================================
+    def render_tabela_html(df: pd.DataFrame):
+        cols = [
+            "id_vaga",
+            "id_candidato",
+            "nome_cliente",
+            "cargo",
+            "nome",
+            "cidade",
+            "status_etapa",
+            "status_contratacao",
+            "ultima_data_parecer",
+        ]
+        headers = [
+            "ID Vaga",
+            "ID Cand.",
+            "Cliente",
+            "Cargo",
+            "Candidato",
+            "Cidade",
+            "Etapa",
+            "Status",
+            "Último parecer",
+        ]
+
+        sub = df[cols].fillna("")
+        html = ["<table>"]
+        html.append("<thead><tr>")
+        for h in headers:
+            html.append(f"<th>{h}</th>")
+        html.append("</tr></thead>")
+        html.append("<tbody>")
+        for _, row in sub.iterrows():
+            html.append("<tr>")
+            for c in cols:
+                valor = row[c]
+                html.append(f"<td>{valor}</td>")
+            html.append("</tr>")
+        html.append("</tbody></table>")
+        st.markdown("".join(html), unsafe_allow_html=True)
+
+    st.subheader("📋 Visão geral do pipeline")
+    render_tabela_html(df_view)
+
+    st.markdown("---")
+
+    # ======================================
+    # AÇÕES EM UM REGISTRO
+    # ======================================
+    st.subheader("⚙️ Ações em um registro do pipeline")
+
+    opcoes = {}
+    for idx, row in df_view.iterrows():
+        chave = idx
+        label = (
+            f"[Vaga {row['id_vaga']}] {row['nome_cliente']} - {row['cargo']} | "
+            f"Cand.: {row['nome']} ({row['cidade']})"
+        )
+        opcoes[chave] = label
+
+    idx_sel = st.selectbox(
+        "Selecione um registro:",
+        options=list(opcoes.keys()),
+        format_func=lambda x: opcoes[x],
+    )
+
+    row_sel = df_view.loc[idx_sel]
+
+    colA, colB, colC, colD = st.columns(4)
+
+    # 1) Download do parecer
+    with colA:
+        caminho = str(row_sel.get("caminho_arquivo", "") or "")
+        if caminho and os.path.exists(caminho):
+            try:
+                with open(caminho, "rb") as f:
+                    parecer_bytes = f.read()
+                fname = os.path.basename(caminho)
+                st.download_button(
+                    "⬇️ Baixar parecer",
+                    data=parecer_bytes,
+                    file_name=fname,
+                    mime="application/pdf",
+                )
+            except Exception as e:
+                st.error(f"Erro ao carregar parecer para download: {e}")
+        else:
+            st.button("⬇️ Baixar parecer", disabled=True, help="Parecer não encontrado")
+
+    # 2) WhatsApp
+    with colB:
+        telefone = str(row_sel.get("telefone", "") or "")
+        link_whats = montar_link_whatsapp(telefone) if telefone else ""
+        if link_whats:
+            st.markdown(f"[💬 Abrir WhatsApp]({link_whats})")
+        else:
+            st.button("💬 Abrir WhatsApp", disabled=True, help="Telefone não informado")
+
+    # 3) Label
+    with colC:
+        st.markdown("**Editar status**")
+
+    # 4) Editar parecer no módulo Parecer
+    with colD:
+        if st.button("📝 Editar parecer no módulo Parecer"):
+            df_par = carregar_pareceres_log()
+            if df_par.empty:
+                st.warning("Nenhum parecer encontrado para este candidato.")
+            else:
+                df_par = df_par.copy()
+                df_par["id_candidato"] = df_par["id_candidato"].astype(str)
+                if "id_vaga" in df_par.columns:
+                    df_par["id_vaga"] = df_par["id_vaga"].astype(str)
+                else:
+                    df_par["id_vaga"] = ""
+
+                registros = df_par[
+                    (df_par["id_candidato"] == str(row_sel["id_candidato"]))
+                    & (df_par["id_vaga"] == str(row_sel["id_vaga"]))
+                ]
+
+                if registros.empty:
+                    # fallback: último parecer só por candidato
+                    registros = df_par[df_par["id_candidato"] == str(row_sel["id_candidato"])]
+
+                if registros.empty:
+                    st.warning("Nenhum parecer encontrado para este candidato/vaga.")
+                else:
+                    reg = registros.sort_values("data_hora").iloc[-1]
+
+                    st.session_state["cliente"] = reg.get("cliente", "")
+                    st.session_state["cargo"] = reg.get("cargo", "")
+                    st.session_state["nome"] = reg.get("nome", "")
+                    st.session_state["localidade"] = reg.get("localidade", "")
+                    st.session_state["idade"] = str(reg.get("idade", ""))
+                    st.session_state["pretensao"] = reg.get("pretensao", "")
+                    st.session_state["linkedin"] = reg.get("linkedin", "")
+                    st.session_state["resumo_profissional"] = reg.get("resumo_profissional", "")
+                    st.session_state["analise_perfil"] = reg.get("analise_perfil", "")
+                    st.session_state["conclusao_texto"] = reg.get("conclusao_texto", "")
+                    st.session_state["id_candidato_selecionado"] = str(reg.get("id_candidato", ""))
+                    st.session_state["id_vaga_selecionada"] = str(reg.get("id_vaga", ""))
+
+                    st.success(
+                        "Dados carregados no formulário de Parecer. "
+                        "Acesse o módulo R&S → Parecer para editar e gerar nova versão."
+                    )
+
+    st.markdown("---")
+
+    # ======================================
+    # FORM DE EDIÇÃO DO STATUS / MOTIVO
+    # ======================================
+    st.subheader("✏️ Editar status deste registro")
+
+    etapa_atual = row_sel.get("status_etapa", "") or ""
+    status_atual = row_sel.get("status_contratacao", "") or ""
+    motivo_atual = row_sel.get("motivo_decline", "") or ""
+
+    col1, col2 = st.columns(2)
+    with col1:
+        etapa_opts = [""] + etapa_opcoes
+        idx_etapa = etapa_opts.index(etapa_atual) if etapa_atual in etapa_opcoes else 0
+        etapa_nova = st.selectbox(
+            "Etapa do pipeline",
+            options=etapa_opts,
+            index=idx_etapa,
+            key=f"etapa_edit_{idx_sel}",
+        )
+    with col2:
+        status_opts = [""] + contratacao_opcoes
+        idx_status = status_opts.index(status_atual) if status_atual in contratacao_opcoes else 0
+        status_novo = st.selectbox(
+            "Status de contratação",
+            options=status_opts,
+            index=idx_status,
+            key=f"status_edit_{idx_sel}",
+        )
+
+    motivo_novo = st.text_area(
+        "Motivo de declínio / observações",
+        value=motivo_atual,
+        height=80,
+        key=f"motivo_edit_{idx_sel}",
+    )
+
+    if st.button("💾 Salvar status do pipeline"):
+        try:
+            df_vinc = carregar_vaga_candidatos()
+            if df_vinc.empty:
+                st.error("Arquivo de vínculos vazio. Nada para atualizar.")
+            else:
+                df_vinc = df_vinc.copy()
+                df_vinc["id_vaga"] = df_vinc["id_vaga"].astype(str)
+                df_vinc["id_candidato"] = df_vinc["id_candidato"].astype(str)
+
+                mask = (df_vinc["id_vaga"] == str(row_sel["id_vaga"])) & (
+                    df_vinc["id_candidato"] == str(row_sel["id_candidato"])
+                )
+                if not mask.any():
+                    st.error("Registro de vínculo não encontrado para atualização.")
+                else:
+                    for col, val in [
+                        ("status_etapa", etapa_nova),
+                        ("status_contratacao", status_novo),
+                        ("motivo_decline", motivo_novo),
+                    ]:
+                        if col not in df_vinc.columns:
+                            df_vinc[col] = ""
+                        df_vinc.loc[mask, col] = val
+
+                    salvar_vaga_candidatos(df_vinc)
+                    st.success("Status do pipeline atualizado com sucesso!")
+                    st.rerun()
+        except Exception as e:
+            st.error(f"Erro ao salvar status do pipeline: {e}")
 
 
 
