@@ -18,7 +18,7 @@ if MOD_DIR not in sys.path:
 from modules import auth  # obrigatório
 from modules.ui_style import inject_global_css  # CSS global (liquid glass)
 
-# Os demais módulos podem ou não existir; tratamos com try/except
+# Módulos opcionais
 try:
     from modules import dashboard
 except Exception:
@@ -59,6 +59,11 @@ try:
 except Exception:
     financeiro = None
 
+try:
+    from modules import usuarios
+except Exception:
+    usuarios = None
+
 
 # ---------------------------------------------------------
 # CONFIG GERAL STREAMLIT
@@ -71,18 +76,75 @@ st.set_page_config(
 
 
 # ---------------------------------------------------------
+# MAPA DE MÓDULOS E PERFIS DE ACESSO
+# ---------------------------------------------------------
+SUBMODULES = {
+    "dashboard": [],
+    "cadastros": [("clientes", "🏢 Clientes"), ("usuarios", "👥 Usuários")],
+    "rs": [
+        ("candidatos", "👤 Candidatos"),
+        ("vagas", "🧩 Vagas"),
+        ("pipeline", "📌 Pipeline"),
+        ("parecer", "📝 Parecer"),
+    ],
+    "sistemas": [("acessos", "🔑 Acessos"), ("chamados", "📨 Chamados")],
+    "financeiro": [("financeiro", "💰 Financeiro")],
+}
+
+# Quais módulos e submódulos cada perfil enxerga
+ROLE_ACCESS = {
+    "MASTER": {
+        "main": ["dashboard", "cadastros", "rs", "sistemas", "financeiro"],
+        "subs": {
+            "cadastros": ["clientes", "usuarios"],
+            "rs": ["candidatos", "vagas", "pipeline", "parecer"],
+            "sistemas": ["acessos", "chamados"],
+            "financeiro": ["financeiro"],
+        },
+    },
+    "OPERACOES_GERAL": {
+        "main": ["dashboard", "cadastros", "rs", "sistemas", "financeiro"],
+        "subs": {
+            "cadastros": ["clientes"],
+            "rs": ["candidatos", "vagas", "pipeline", "parecer"],
+            "sistemas": ["acessos"],
+            "financeiro": ["financeiro"],
+        },
+    },
+    "OPERACOES_RS": {
+        "main": ["dashboard", "rs"],
+        "subs": {
+            "rs": ["candidatos", "vagas", "pipeline", "parecer"],
+        },
+    },
+    "OPERACOES_SISTEMAS": {
+        "main": ["dashboard", "sistemas"],
+        "subs": {
+            "sistemas": ["acessos", "chamados"],
+        },
+    },
+    "FINANCEIRO": {
+        "main": ["dashboard", "financeiro"],
+        "subs": {
+            "financeiro": ["financeiro"],
+        },
+    },
+}
+
+
+def get_role_config() -> dict:
+    role = st.session_state.get("auth_role", "MASTER")
+    return ROLE_ACCESS.get(role, ROLE_ACCESS["MASTER"])
+
+
+# ---------------------------------------------------------
 # LOGIN – garante que o sistema só aparece após logar
 # ---------------------------------------------------------
 def ensure_login() -> str:
     """
-    Chama o modules.auth.run(), que desenha a tela de login.
-    Aqui decidimos se o usuário está autenticado ou não.
-
-    Regra:
-    - Se o username ainda é "Usuário" (placeholder), consideramos NÃO logado
-      e damos st.stop(), então NADA abaixo (menus / módulos) será carregado.
-    - Quando o auth.run() gravar um usuário válido em session_state, ou
-      retornar um nome, aí sim liberamos o restante da aplicação.
+    Chama auth.run(), que desenha tela de login ou troca de senha.
+    Se não houver usuário logado, st.stop() interrompe a app
+    (assim nada do sistema aparece por trás).
     """
     possible_username: Optional[str] = None
     try:
@@ -100,8 +162,7 @@ def ensure_login() -> str:
         or "Usuário"
     )
 
-    # 🔒 Se ainda está no placeholder "Usuário", entende-se que não logou:
-    # auth.run() já desenhou a tela de login, então paramos a execução aqui.
+    # Se ainda está no placeholder "Usuário", considera não logado
     if username == "Usuário":
         st.stop()
 
@@ -111,23 +172,9 @@ def ensure_login() -> str:
 # ---------------------------------------------------------
 # ESTADO DE NAVEGAÇÃO
 # ---------------------------------------------------------
-SUBMODULES = {
-    "dashboard": [],
-    "cadastros": [("clientes", "🏢 Clientes"), ("usuarios", "👥 Usuários")],
-    "rs": [
-        ("candidatos", "👤 Candidatos"),
-        ("vagas", "🧩 Vagas"),
-        ("pipeline", "📌 Pipeline"),
-        ("parecer", "📝 Parecer"),
-    ],
-    "sistemas": [("acessos", "🔑 Acessos"), ("chamados", "📨 Chamados")],
-    "financeiro": [("financeiro", "💰 Financeiro")],
-}
-
-
 def init_nav_state() -> None:
     if "main_module" not in st.session_state:
-        st.session_state["main_module"] = "rs"  # começa em R&S
+        st.session_state["main_module"] = "rs"
     if "sub_module" not in st.session_state:
         st.session_state["sub_module"] = "candidatos"
 
@@ -136,9 +183,11 @@ def init_nav_state() -> None:
 # NAV PRINCIPAL (Dashboard, Cadastros, R&S, Sistemas, Financeiro + Sair)
 # ---------------------------------------------------------
 def render_main_nav() -> str:
-    main = st.session_state.get("main_module", "rs")
+    role_cfg = get_role_config()
+    allowed_main = set(role_cfg.get("main", []))
 
-    items = [
+    # Ordem e labels fixas
+    items_all = [
         ("dashboard", "📊 Dashboard"),
         ("cadastros", "📁 Cadastros"),
         ("rs", "🤝 R&S"),
@@ -146,11 +195,20 @@ def render_main_nav() -> str:
         ("financeiro", "💰 Financeiro"),
     ]
 
+    # Filtra pelo perfil
+    visible_items = [item for item in items_all if item[0] in allowed_main]
+
+    # Garante que main_module atual é permitido
+    main = st.session_state.get("main_module", "rs")
+    if main not in allowed_main and visible_items:
+        main = visible_items[0][0]
+        st.session_state["main_module"] = main
+
     st.markdown('<div class="main-nav-wrapper"><div class="main-nav-row">', unsafe_allow_html=True)
-    cols = st.columns(len(items) + 1)  # +1 para o botão Sair
+    cols = st.columns(len(visible_items) + 1)  # +1 para "Sair"
 
     # Botões principais
-    for idx, (key, label) in enumerate(items):
+    for idx, (key, label) in enumerate(visible_items):
         active = (key == main)
         btn_key = f"main_{key}"
         with cols[idx]:
@@ -163,13 +221,20 @@ def render_main_nav() -> str:
             if clicked:
                 st.session_state["main_module"] = key
                 subs = SUBMODULES.get(key, [])
-                if subs:
-                    st.session_state["sub_module"] = subs[0][0]
-                else:
-                    st.session_state["sub_module"] = ""
+                # ajusta sub_module ao primeiro sub permitido
+                role_cfg = get_role_config()
+                allowed_subs_map = role_cfg.get("subs", {})
+                allowed_for_module = allowed_subs_map.get(
+                    key, [sid for sid, _ in subs]
+                )
+                # pega primeiro sub permitido
+                for sid, _ in subs:
+                    if sid in allowed_for_module:
+                        st.session_state["sub_module"] = sid
+                        break
                 main = key
 
-    # Botão SAIR sempre visível na barra
+    # Botão SAIR
     with cols[-1]:
         if st.button("⏏ Sair", key="btn_logout_main", use_container_width=True):
             keys = list(st.session_state.keys())
@@ -183,10 +248,19 @@ def render_main_nav() -> str:
 
 
 # ---------------------------------------------------------
-# SUB NAV (depende do módulo principal)
+# SUB NAV (depende do módulo principal e do perfil)
 # ---------------------------------------------------------
 def render_sub_nav(main_module: str) -> str:
-    subs = SUBMODULES.get(main_module, [])
+    subs_all = SUBMODULES.get(main_module, [])
+    role_cfg = get_role_config()
+    allowed_subs_map = role_cfg.get("subs", {})
+    allowed_for_module = set(
+        allowed_subs_map.get(main_module, [sid for sid, _ in subs_all])
+    )
+
+    # Filtra submódulos pelo perfil
+    subs = [(sid, label) for sid, label in subs_all if sid in allowed_for_module]
+
     cur_sub = st.session_state.get("sub_module", "")
 
     if subs:
@@ -269,17 +343,20 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
         return
 
     if main_module == "cadastros":
-        if sub_module == "clientes" or sub_module == "":
+        if sub_module in ("clientes", ""):
             if clientes is not None and hasattr(clientes, "run"):
                 clientes.run()
             else:
                 st.error("Módulo de clientes não encontrado.")
         elif sub_module == "usuarios":
-            render_usuarios_placeholder()
+            if usuarios is not None and hasattr(usuarios, "run"):
+                usuarios.run()
+            else:
+                render_usuarios_placeholder()
         return
 
     if main_module == "rs":
-        if sub_module == "candidatos" or sub_module == "":
+        if sub_module in ("candidatos", ""):
             if candidatos is not None and hasattr(candidatos, "run"):
                 candidatos.run()
             else:
@@ -302,7 +379,7 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
         return
 
     if main_module == "sistemas":
-        if sub_module == "acessos" or sub_module == "":
+        if sub_module in ("acessos", ""):
             if acessos is not None and hasattr(acessos, "run"):
                 acessos.run()
             else:
@@ -326,22 +403,23 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
 # MAIN
 # ---------------------------------------------------------
 def main() -> None:
-    # Aplica o tema / CSS global
+    # Aplica CSS/tema
     inject_global_css()
 
-    # 🔐 Garante login ANTES de mostrar qualquer coisa do sistema
+    # Garante login antes de qualquer coisa
     username = ensure_login()
 
-    # Depois que passou daqui, usuário já está autenticado
+    # Estado de navegação
     init_nav_state()
 
+    # Navegação
     main_module = render_main_nav()
     sub_module = render_sub_nav(main_module)
 
     # Conteúdo principal
     route_section(main_module, sub_module, username)
 
-    # Badge com usuário no canto
+    # Badge com usuário
     render_user_badge(username)
 
 
