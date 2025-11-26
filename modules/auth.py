@@ -1,94 +1,186 @@
+import os
+import hashlib
+from typing import Tuple
+
+import pandas as pd
 import streamlit as st
 
-# ============================================
-# "Banco" simples de usuários em memória
-# (se quiser depois a gente persiste em arquivo)
-# ============================================
-
-DEFAULT_USERS = {
-    "rikardo.alvim": {
-        "nome": "Rikardo Alvim",
-        "senha": "2025",
-        "force_change": True,  # precisa trocar no 1º acesso
-        "is_admin": True,
-    },
-    "stephanie.alvim": {
-        "nome": "Stephanie Alvim",
-        "senha": "2025",
-        "force_change": True,
-        "is_admin": False,
-    },
-}
+# Caminho do arquivo de usuários: raiz do projeto (mesmo nível do parecer_app.py)
+MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.abspath(os.path.join(MODULE_DIR, ".."))
+USERS_FILE = os.path.join(ROOT_DIR, "usuarios.csv")
 
 
-def get_users():
-    """
-    Carrega o dicionário de usuários na session_state.
-    (por enquanto fica só em memória mesmo)
-    """
-    if "usuarios_db" not in st.session_state:
-        # cópia para não mexer no DEFAULT_USERS original
-        st.session_state["usuarios_db"] = {k: v.copy() for k, v in DEFAULT_USERS.items()}
-    return st.session_state["usuarios_db"]
+# -----------------------------
+# Utilitários de senha / arquivo
+# -----------------------------
+def hash_password(senha: str) -> str:
+    """Gera hash SHA256 para a senha."""
+    return hashlib.sha256(senha.encode("utf-8")).hexdigest()
 
 
-def run():
-    users = get_users()
+def _create_default_users_df() -> pd.DataFrame:
+    """Cria DataFrame com usuários padrão."""
+    data = [
+        {
+            "username": "rikardo.alvim",
+            "nome": "Rikardo Alvim",
+            "senha_hash": hash_password("2025"),
+            "must_change": 1,  # precisa trocar ao primeiro login
+            "perfil": "MASTER",
+            "ativo": 1,
+        },
+        {
+            "username": "stephanie.alvim",
+            "nome": "Stephanie Alvim",
+            "senha_hash": hash_password("2025"),
+            "must_change": 1,
+            "perfil": "OPERACOES_RS",
+            "ativo": 1,
+        },
+    ]
+    return pd.DataFrame(data)
 
-    usuario_atual = st.session_state.get("usuario_logado")
-    precisa_trocar = st.session_state.get("trocar_senha_obrigatorio", False)
 
-    # ====================================================
-    # 1) Se já está logado e NÃO precisa trocar senha:
-    #    não mostra nada de login, deixa o parecer_app cuidar
-    # ====================================================
-    if usuario_atual and not precisa_trocar:
-        return
+def load_users() -> pd.DataFrame:
+    """Carrega usuários do CSV; se não existir, cria com usuários padrão."""
+    if not os.path.exists(USERS_FILE):
+        df = _create_default_users_df()
+        df.to_csv(USERS_FILE, index=False, encoding="utf-8")
+        return df
 
-    st.title("🔐 GAC - Autenticação")
+    df = pd.read_csv(USERS_FILE, dtype=str)
+    # Normaliza tipos
+    if "must_change" in df.columns:
+        df["must_change"] = df["must_change"].fillna("0").astype(int)
+    else:
+        df["must_change"] = 0
 
-    # ====================================================
-    # 2) Usuário logado MAS precisa trocar senha
-    # ====================================================
-    if usuario_atual and precisa_trocar:
-        st.info(f"Olá, **{usuario_atual}**. Defina uma nova senha para continuar.")
+    if "ativo" in df.columns:
+        df["ativo"] = df["ativo"].fillna("1").astype(int)
+    else:
+        df["ativo"] = 1
 
-        nova = st.text_input("Nova senha", type="password")
-        nova2 = st.text_input("Confirme a nova senha", type="password")
+    if "perfil" not in df.columns:
+        df["perfil"] = "OPERACOES_GERAL"
 
-        if st.button("Salvar nova senha"):
-            if not nova:
-                st.error("Informe uma senha.")
-            elif nova != nova2:
-                st.error("As senhas não conferem.")
-            else:
-                users[usuario_atual]["senha"] = nova
-                users[usuario_atual]["force_change"] = False
-                st.session_state["trocar_senha_obrigatorio"] = False
-                st.success("Senha alterada com sucesso! Entrando no sistema...")
-                st.rerun()
+    df["username"] = df["username"].astype(str)
+    df["nome"] = df.get("nome", "").astype(str)
+    df["senha_hash"] = df["senha_hash"].astype(str)
+    df["perfil"] = df["perfil"].astype(str)
 
-        return
+    return df
 
-    # ====================================================
-    # 3) Tela de login (ninguém logado ainda)
-    # ====================================================
-    st.subheader("Acesse o GAC - Gerenciador Alvim Consultoria")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        login = st.text_input("Usuário (ex.: rikardo.alvim)")
-    with col2:
-        senha = st.text_input("Senha", type="password")
+def save_users(df: pd.DataFrame) -> None:
+    """Grava o DataFrame de usuários no CSV."""
+    df.to_csv(USERS_FILE, index=False, encoding="utf-8")
 
-    if st.button("Entrar"):
-        if login in users and senha == users[login]["senha"]:
-            # Login OK
-            st.session_state["usuario_logado"] = login
-            st.session_state["trocar_senha_obrigatorio"] = users[login].get("force_change", False)
-            st.success("Login realizado com sucesso!")
-            st.rerun()
+
+# -----------------------------
+# Tela de troca de senha
+# -----------------------------
+def _render_change_password(username: str, df: pd.DataFrame) -> None:
+    st.title("🔐 Definir nova senha")
+    st.write(f"Usuário: **{username}**")
+
+    new1 = st.text_input("Nova senha", type="password")
+    new2 = st.text_input("Confirme a nova senha", type="password")
+
+    if st.button("Salvar nova senha"):
+        if not new1.strip():
+            st.error("Informe uma senha.")
+        elif new1 != new2:
+            st.error("As senhas não coincidem.")
         else:
-            st.error("Usuário ou senha inválidos.")
+            df.loc[df["username"] == username, "senha_hash"] = hash_password(new1)
+            df.loc[df["username"] == username, "must_change"] = 0
+            save_users(df)
+            st.success("Senha alterada com sucesso! Faça login novamente.")
+            # Limpa sessão de auth e volta pra tela de login
+            for k in ["auth_username", "auth_role", "auth_need_change"]:
+                st.session_state.pop(k, None)
+            st.experimental_rerun()
+
+    st.stop()
+
+
+# -----------------------------
+# Tela de login
+# -----------------------------
+def _render_login(df: pd.DataFrame) -> None:
+    st.title("🔑 GAC - Alvim Consultoria")
+    st.write("Faça login para acessar o sistema.")
+
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        username_inp = st.text_input("Usuário (login)")
+        password_inp = st.text_input("Senha", type="password")
+
+        if st.button("Entrar"):
+            row = df[df["username"] == username_inp]
+            if row.empty:
+                st.error("Usuário não encontrado.")
+            else:
+                row = row.iloc[0]
+                if int(row.get("ativo", 1)) != 1:
+                    st.error("Usuário inativo.")
+                elif row["senha_hash"] != hash_password(password_inp):
+                    st.error("Senha inválida.")
+                else:
+                    st.session_state["auth_username"] = row["username"]
+                    st.session_state["auth_role"] = row.get("perfil", "OPERACOES_GERAL")
+                    st.session_state["auth_need_change"] = bool(row.get("must_change", 0))
+                    st.experimental_rerun()
+
+    with col2:
+        st.markdown(
+            """
+            ##### Acessos iniciais
+            - **Usuário:** `rikardo.alvim` / **Senha:** `2025`  
+            - **Usuário:** `stephanie.alvim` / **Senha:** `2025`  
+
+            No primeiro acesso, será solicitado que a senha seja redefinida.
+            """
+        )
+
+
+# -----------------------------
+# Função principal usada pelo parecer_app
+# -----------------------------
+def run() -> str | None:
+    """
+    Desenha tela de login ou troca de senha.
+    Retorna o username logado (quando já autenticado) ou None.
+    O parecer_app decide se segue ou não.
+    """
+    df = load_users()
+
+    # Se já tem usuário na sessão, verifica se precisa trocar senha
+    username = st.session_state.get("auth_username")
+    if username:
+        row = df[df["username"] == username]
+        if row.empty:
+            # Usuário apagado do arquivo -> volta pra login
+            for k in ["auth_username", "auth_role", "auth_need_change"]:
+                st.session_state.pop(k, None)
+            _render_login(df)
+            return None
+
+        row = row.iloc[0]
+        st.session_state["auth_role"] = row.get("perfil", "OPERACOES_GERAL")
+        must_change = int(row.get("must_change", 0)) == 1
+
+        if must_change:
+            _render_change_password(username, df)
+            return None
+
+        # Usuário logado OK
+        return username
+
+    # Caso não haja usuário na sessão, mostra login
+    _render_login(df)
+    return None
 
 
