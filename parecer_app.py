@@ -15,11 +15,9 @@ MOD_DIR = os.path.join(BASE_DIR, "modules")
 if MOD_DIR not in sys.path:
     sys.path.append(MOD_DIR)
 
-# Autenticação e estilo global
-from modules import auth
-from modules.ui_style import inject_global_css
+from modules import auth  # obrigatório
 
-# Módulos opcionais (cada um precisa ter uma função run())
+# Os demais módulos podem ou não existir; tratamos com try/except
 try:
     from modules import dashboard
 except Exception:
@@ -60,10 +58,11 @@ try:
 except Exception:
     financeiro = None
 
+# NOVO: módulo de status do pipeline
 try:
-    from modules import usuarios
+    from modules import status_pipeline
 except Exception:
-    usuarios = None
+    status_pipeline = None
 
 
 # ---------------------------------------------------------
@@ -77,75 +76,216 @@ st.set_page_config(
 
 
 # ---------------------------------------------------------
-# MAPA DE MÓDULOS E SUBMÓDULOS
+# CSS GLOBAL – TEMA LIQUID GLASS (CLARO)
 # ---------------------------------------------------------
-SUBMODULES = {
-    "dashboard": [],
-    "cadastros": [("clientes", "🏢 Clientes"), ("usuarios", "👥 Usuários")],
-    "rs": [
-        ("candidatos", "👤 Candidatos"),
-        ("vagas", "🧩 Vagas"),
-        ("pipeline", "📌 Pipeline"),
-        ("parecer", "📝 Parecer"),
-    ],
-    "sistemas": [("acessos", "🔑 Acessos"), ("chamados", "📨 Chamados")],
-    "financeiro": [("financeiro", "💰 Financeiro")],
-}
+def inject_global_css() -> None:
+    st.markdown(
+        """
+        <style>
+        /* Fundo geral em gradiente pastel */
+        .stApp {
+            background: radial-gradient(circle at 0% 0%, #e0f7ff 0, #f6e9ff 40%, #fdf2ff 80%);
+            color-scheme: light;
+        }
 
-# Perfis de acesso X o que cada um enxerga
-ROLE_ACCESS = {
-    "MASTER": {
-        "main": ["dashboard", "cadastros", "rs", "sistemas", "financeiro"],
-        "subs": {
-            "cadastros": ["clientes", "usuarios"],
-            "rs": ["candidatos", "vagas", "pipeline", "parecer"],
-            "sistemas": ["acessos", "chamados"],
-            "financeiro": ["financeiro"],
-        },
-    },
-    "OPERACOES_GERAL": {
-        "main": ["dashboard", "cadastros", "rs", "sistemas", "financeiro"],
-        "subs": {
-            "cadastros": ["clientes"],
-            "rs": ["candidatos", "vagas", "pipeline", "parecer"],
-            "sistemas": ["acessos"],
-            "financeiro": ["financeiro"],
-        },
-    },
-    "OPERACOES_RS": {
-        "main": ["dashboard", "rs"],
-        "subs": {
-            "rs": ["candidatos", "vagas", "pipeline", "parecer"],
-        },
-    },
-    "OPERACOES_SISTEMAS": {
-        "main": ["dashboard", "sistemas"],
-        "subs": {
-            "sistemas": ["acessos", "chamados"],
-        },
-    },
-    "FINANCEIRO": {
-        "main": ["dashboard", "financeiro"],
-        "subs": {
-            "financeiro": ["financeiro"],
-        },
-    },
-}
+        /* Esconde a sidebar padrão */
+        section[data-testid="stSidebar"] {
+            display: none !important;
+        }
 
+        /* Container principal mais amplo */
+        .block-container {
+            padding-top: 1.3rem;
+            padding-left: 2.5rem;
+            padding-right: 2.5rem;
+            max-width: 1400px;
+        }
 
-def get_role_config() -> dict:
-    """Retorna o dicionário de acesso para o perfil atual."""
-    role = st.session_state.get("auth_role", "MASTER")
-    return ROLE_ACCESS.get(role, ROLE_ACCESS["MASTER"])
+        /* NAV PRINCIPAL – glass, fixo no topo */
+        .main-nav-wrapper {
+            position: sticky;
+            top: 0.6rem;
+            z-index: 999;
+            padding: 0.5rem 0.75rem 0.7rem 0.75rem;
+            border-radius: 999px;
+            margin-bottom: 0.4rem;
+            background: rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.25);
+        }
+
+        .main-nav-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        /* SUB NAV (abaixo da principal) */
+        .glass-actions-row {
+            margin-top: 0.1rem;
+            margin-bottom: 0.6rem;
+            display: flex;
+            justify-content: flex-start;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        /* Botões GLASS – base (submenus + botões normais) */
+        .stButton>button {
+            border-radius: 999px !important;
+            border: 1px solid rgba(255, 255, 255, 0.8) !important;
+            padding: 0.45rem 1.35rem !important;
+            font-size: 0.92rem !important;
+            font-weight: 600 !important;
+            color: #111827 !important;
+            background: radial-gradient(circle at 0 0,
+                        rgba(255, 255, 255, 0.96),
+                        rgba(228, 241, 255, 0.97)) !important;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.22) !important;
+            transition: transform 0.14s ease-out,
+                        box-shadow 0.14s ease-out,
+                        background 0.14s ease-out,
+                        border-color 0.14s ease-out;
+        }
+
+        .stButton>button:hover {
+            transform: translateY(-1px) scale(1.01);
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.30) !important;
+            background: linear-gradient(135deg,
+                        rgba(255, 255, 255, 0.99),
+                        rgba(224, 231, 255, 0.99)) !important;
+        }
+
+        .stButton>button:active {
+            transform: translateY(1px) scale(0.99);
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35) !important;
+        }
+
+        /* Botões do MENU PRINCIPAL um pouco menores */
+        .main-nav-wrapper .stButton>button {
+            font-size: 0.86rem !important;
+            padding: 0.35rem 1.0rem !important;
+        }
+
+        /* Botão ativo (nav) – destaque leve rosa */
+        .nav-active>button {
+            border-color: rgba(244, 114, 182, 0.85) !important;
+            box-shadow: 0 18px 40px rgba(236, 72, 153, 0.40) !important;
+        }
+
+        /* Chip de usuário – canto inferior esquerdo */
+        .user-badge {
+            position: fixed;
+            left: 1.2rem;
+            bottom: 1.1rem;
+            z-index: 1000;
+            padding: 0.25rem 0.85rem;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.86);
+            color: #e5e7eb;
+            font-size: 0.80rem;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
+        }
+
+        .user-badge span.emoji {
+            font-size: 1rem;
+        }
+
+        /* Títulos */
+        h1, h2, h3 {
+            color: #0f172a;
+        }
+
+        /* Tabelas HTML glass (usadas em listas customizadas) */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.4rem;
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 22px;
+            overflow: hidden;
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.22);
+        }
+
+        thead tr {
+            background: rgba(15, 23, 42, 0.06);
+        }
+
+        th, td {
+            padding: 0.55rem 0.8rem;
+            font-size: 0.85rem;
+            color: #111827;
+            text-align: left;
+        }
+
+        tbody tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        tbody tr:hover {
+            background: rgba(239, 246, 255, 0.98);
+        }
+
+        /* Selectbox / MultiSelect claros */
+        .stSelectbox div[data-baseweb="select"],
+        .stMultiSelect div[data-baseweb="select"] {
+            background: rgba(255, 255, 255, 0.96) !important;
+            border-radius: 16px !important;
+        }
+
+        .stSelectbox div[role="listbox"],
+        .stMultiSelect div[role="listbox"] {
+            background: #f9fafb !important;
+            color: #111827 !important;
+        }
+
+        /* Inputs / textareas claros (principalmente para o Parecer) */
+        textarea,
+        input[type="text"],
+        input[type="number"],
+        input[type="password"],
+        input[type="email"] {
+            background: rgba(255, 255, 255, 0.98) !important;
+            color: #0f172a !important;
+            border-radius: 18px !important;
+            border: 1px solid rgba(148, 163, 184, 0.7) !important;
+        }
+
+        textarea:focus,
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="password"]:focus,
+        input[type="email"]:focus {
+            outline: none !important;
+            border-color: rgba(59, 130, 246, 0.9) !important;
+            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5);
+        }
+
+        /* Labels mais visíveis */
+        label {
+            color: #111827 !important;
+            font-weight: 600 !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 # ---------------------------------------------------------
-# LOGIN – garante que só mostra o sistema depois de logar
+# LOGIN
 # ---------------------------------------------------------
 def ensure_login() -> str:
     """
-    Chama auth.run(), que desenha tela de login ou troca de senha.
-    Se não houver usuário logado, o próprio auth.run() segura na tela.
+    Delega pro modules.auth.run() controlar o fluxo.
+    Se ele quiser segurar na tela de login, ele usa st.stop() lá.
+    Aqui só pegamos o nome do usuário depois.
     """
     possible_username: Optional[str] = None
     try:
@@ -162,20 +302,33 @@ def ensure_login() -> str:
         or st.session_state.get("user")
         or "Usuário"
     )
-
-    if username == "Usuário":
-        # Ainda não tem login válido; auth.run() já mostrou tela de login
-        st.stop()
-
     return username
 
 
 # ---------------------------------------------------------
 # ESTADO DE NAVEGAÇÃO
 # ---------------------------------------------------------
+SUBMODULES = {
+    "dashboard": [],
+    "cadastros": [
+        ("clientes", "🏢 Clientes"),
+        ("usuarios", "👥 Usuários"),
+        ("status_pipeline", "📌 Status Pipeline"),  # NOVO ITEM AQUI
+    ],
+    "rs": [
+        ("candidatos", "👤 Candidatos"),
+        ("vagas", "🧩 Vagas"),
+        ("pipeline", "📌 Pipeline"),
+        ("parecer", "📝 Parecer"),
+    ],
+    "sistemas": [("acessos", "🔑 Acessos"), ("chamados", "📨 Chamados")],
+    "financeiro": [("financeiro", "💰 Financeiro")],
+}
+
+
 def init_nav_state() -> None:
     if "main_module" not in st.session_state:
-        st.session_state["main_module"] = "rs"
+        st.session_state["main_module"] = "rs"  # começa em R&S
     if "sub_module" not in st.session_state:
         st.session_state["sub_module"] = "candidatos"
 
@@ -184,11 +337,9 @@ def init_nav_state() -> None:
 # NAV PRINCIPAL (Dashboard, Cadastros, R&S, Sistemas, Financeiro + Sair)
 # ---------------------------------------------------------
 def render_main_nav() -> str:
-    role_cfg = get_role_config()
-    allowed_main = set(role_cfg.get("main", []))
+    main = st.session_state.get("main_module", "rs")
 
-    # Ordem fixa dos módulos
-    items_all = [
+    items = [
         ("dashboard", "📊 Dashboard"),
         ("cadastros", "📁 Cadastros"),
         ("rs", "🤝 R&S"),
@@ -196,20 +347,11 @@ def render_main_nav() -> str:
         ("financeiro", "💰 Financeiro"),
     ]
 
-    # Apenas os módulos permitidos para o perfil
-    visible_items = [item for item in items_all if item[0] in allowed_main]
-
-    # Garante que o main_module atual é permitido
-    main = st.session_state.get("main_module", "rs")
-    if main not in allowed_main and visible_items:
-        main = visible_items[0][0]
-        st.session_state["main_module"] = main
-
     st.markdown('<div class="main-nav-wrapper"><div class="main-nav-row">', unsafe_allow_html=True)
-    cols = st.columns(len(visible_items) + 1)  # +1 para o botão Sair na barra
+    cols = st.columns(len(items) + 1)  # +1 para o botão Sair
 
     # Botões principais
-    for idx, (key, label) in enumerate(visible_items):
+    for idx, (key, label) in enumerate(items):
         active = (key == main)
         btn_key = f"main_{key}"
         with cols[idx]:
@@ -222,45 +364,30 @@ def render_main_nav() -> str:
             if clicked:
                 st.session_state["main_module"] = key
                 subs = SUBMODULES.get(key, [])
-                # Ajusta sub_module pro primeiro sub permitido
-                role_cfg_local = get_role_config()
-                allowed_subs_map = role_cfg_local.get("subs", {})
-                allowed_for_module = allowed_subs_map.get(
-                    key, [sid for sid, _ in subs]
-                )
-                for sid, _ in subs:
-                    if sid in allowed_for_module:
-                        st.session_state["sub_module"] = sid
-                        break
+                if subs:
+                    st.session_state["sub_module"] = subs[0][0]
+                else:
+                    st.session_state["sub_module"] = ""
                 main = key
 
-    # Botão SAIR (sempre na barra)
+    # Botão SAIR
     with cols[-1]:
         if st.button("⏏ Sair", key="btn_logout_main", use_container_width=True):
             keys = list(st.session_state.keys())
             for k in keys:
                 if k != "_is_running_with_streamlit":
                     del st.session_state[k]
-            st.experimental_rerun()
+            st.rerun()
 
     st.markdown("</div></div>", unsafe_allow_html=True)
     return main
 
 
 # ---------------------------------------------------------
-# SUB NAV (depende do módulo principal e do perfil)
+# SUB NAV (depende do módulo principal)
 # ---------------------------------------------------------
 def render_sub_nav(main_module: str) -> str:
-    subs_all = SUBMODULES.get(main_module, [])
-    role_cfg = get_role_config()
-    allowed_subs_map = role_cfg.get("subs", {})
-    allowed_for_module = set(
-        allowed_subs_map.get(main_module, [sid for sid, _ in subs_all])
-    )
-
-    # Filtra submódulos pelo perfil
-    subs = [(sid, label) for sid, label in subs_all if sid in allowed_for_module]
-
+    subs = SUBMODULES.get(main_module, [])
     cur_sub = st.session_state.get("sub_module", "")
 
     if subs:
@@ -294,7 +421,7 @@ def render_sub_nav(main_module: str) -> str:
 
 
 # ---------------------------------------------------------
-# USER BADGE (nome do usuário no canto)
+# USER BADGE
 # ---------------------------------------------------------
 def render_user_badge(username: str) -> None:
     st.markdown(
@@ -309,7 +436,7 @@ def render_user_badge(username: str) -> None:
 
 
 # ---------------------------------------------------------
-# TELAS PLACEHOLDER
+# ROUTER – CHAMA OS MÓDULOS
 # ---------------------------------------------------------
 def render_dashboard(username: str) -> None:
     st.header("📊 Dashboard (placeholder)")
@@ -324,16 +451,17 @@ def render_dashboard(username: str) -> None:
     )
 
 
+def render_usuarios_placeholder() -> None:
+    st.header("👥 Cadastro de Usuários (em breve)")
+    st.info("Módulo de usuários ainda não foi implementado.")
+
+
 def render_chamados_placeholder() -> None:
     st.header("📨 Chamados / Suporte (em breve)")
     st.info("Módulo de chamados ainda será desenvolvido.")
 
 
-# ---------------------------------------------------------
-# ROUTER – CHAMA OS MÓDULOS CORRETOS
-# ---------------------------------------------------------
 def route_section(main_module: str, sub_module: str, username: str) -> None:
-    # DASHBOARD
     if main_module == "dashboard":
         if dashboard is not None and hasattr(dashboard, "run"):
             dashboard.run()
@@ -341,23 +469,23 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
             render_dashboard(username)
         return
 
-    # CADASTROS
     if main_module == "cadastros":
-        if sub_module in ("clientes", ""):
+        if sub_module == "clientes" or sub_module == "":
             if clientes is not None and hasattr(clientes, "run"):
                 clientes.run()
             else:
                 st.error("Módulo de clientes não encontrado.")
         elif sub_module == "usuarios":
-            if usuarios is not None and hasattr(usuarios, "run"):
-                usuarios.run()
+            render_usuarios_placeholder()
+        elif sub_module == "status_pipeline":
+            if status_pipeline is not None and hasattr(status_pipeline, "run"):
+                status_pipeline.run()
             else:
-                st.error("Módulo de usuários não encontrado.")
+                st.error("Módulo de Status do Pipeline não encontrado.")
         return
 
-    # R&S
     if main_module == "rs":
-        if sub_module in ("candidatos", ""):
+        if sub_module == "candidatos" or sub_module == "":
             if candidatos is not None and hasattr(candidatos, "run"):
                 candidatos.run()
             else:
@@ -379,9 +507,8 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
                 st.error("Módulo de parecer não encontrado.")
         return
 
-    # SISTEMAS
     if main_module == "sistemas":
-        if sub_module in ("acessos", ""):
+        if sub_module == "acessos" or sub_module == "":
             if acessos is not None and hasattr(acessos, "run"):
                 acessos.run()
             else:
@@ -390,7 +517,6 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
             render_chamados_placeholder()
         return
 
-    # FINANCEIRO
     if main_module == "financeiro":
         if financeiro is not None and hasattr(financeiro, "run"):
             financeiro.run()
@@ -398,7 +524,7 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
             st.error("Módulo financeiro não encontrado.")
         return
 
-    # Fallback
+    # fallback
     render_dashboard(username)
 
 
@@ -406,23 +532,14 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
 # MAIN
 # ---------------------------------------------------------
 def main() -> None:
-    # Aplica o CSS / tema liquid glass
     inject_global_css()
-
-    # Login (se não logar, a app é interrompida pelo auth)
     username = ensure_login()
-
-    # Estado de navegação
     init_nav_state()
 
-    # Navegação
     main_module = render_main_nav()
     sub_module = render_sub_nav(main_module)
 
-    # Conteúdo principal
     route_section(main_module, sub_module, username)
-
-    # Badge com usuário logado
     render_user_badge(username)
 
 
