@@ -70,7 +70,7 @@ st.set_page_config(
 
 
 # ---------------------------------------------------------
-# CSS GLOBAL – TEMA LIQUID GLASS (CLARO)
+# CSS GLOBAL – TEMA LIQUID GLASS (CLARO) + TEXTOS EM CINZA
 # ---------------------------------------------------------
 def inject_global_css() -> None:
     st.markdown(
@@ -265,6 +265,35 @@ def inject_global_css() -> None:
         label {
             color: #111827 !important;
             font-weight: 600 !important;
+        }
+
+        /* ===============================
+           AJUSTE DE COR DOS TEXTOS (CINZA ELEGANTE)
+           SEM ALTERAR O FUNDO NEM O LAYOUT
+        ================================ */
+
+        /* Texto geral da app */
+        html, body, [class*="css"] {
+            color: #111827;  /* cinza escuro, fácil de ler */
+            font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+        }
+
+        /* Títulos (reforço) */
+        h1, h2, h3, h4, h5, h6 {
+            color: #111827 !important;
+        }
+
+        /* Labels e textos padrão (inputs, selects, etc.) */
+        .stMarkdown, .stText, .stRadio label, .stCheckbox label,
+        .stSelectbox label, .stMultiSelect label, .stDateInput label,
+        .stFileUploader label, label {
+            color: #111827 !important;
+        }
+
+        /* Placeholders um pouco mais escuros (cinza médio) */
+        ::placeholder {
+            color: #6B7280 !important;
+            opacity: 1;
         }
         </style>
         """,
@@ -536,6 +565,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 
 
