@@ -16,7 +16,7 @@ if MOD_DIR not in sys.path:
     sys.path.append(MOD_DIR)
 
 from modules import auth  # obrigatório
-from modules.ui_style import inject_global_css  # <<< CSS agora vem daqui
+from modules.ui_style import inject_global_css  # CSS global (liquid glass)
 
 # Os demais módulos podem ou não existir; tratamos com try/except
 try:
@@ -71,13 +71,18 @@ st.set_page_config(
 
 
 # ---------------------------------------------------------
-# LOGIN
+# LOGIN – garante que o sistema só aparece após logar
 # ---------------------------------------------------------
 def ensure_login() -> str:
     """
-    Delega pro modules.auth.run() controlar o fluxo.
-    Se ele quiser segurar na tela de login, ele usa st.stop() lá.
-    Aqui só pegamos o nome do usuário depois.
+    Chama o modules.auth.run(), que desenha a tela de login.
+    Aqui decidimos se o usuário está autenticado ou não.
+
+    Regra:
+    - Se o username ainda é "Usuário" (placeholder), consideramos NÃO logado
+      e damos st.stop(), então NADA abaixo (menus / módulos) será carregado.
+    - Quando o auth.run() gravar um usuário válido em session_state, ou
+      retornar um nome, aí sim liberamos o restante da aplicação.
     """
     possible_username: Optional[str] = None
     try:
@@ -94,6 +99,12 @@ def ensure_login() -> str:
         or st.session_state.get("user")
         or "Usuário"
     )
+
+    # 🔒 Se ainda está no placeholder "Usuário", entende-se que não logou:
+    # auth.run() já desenhou a tela de login, então paramos a execução aqui.
+    if username == "Usuário":
+        st.stop()
+
     return username
 
 
@@ -116,7 +127,7 @@ SUBMODULES = {
 
 def init_nav_state() -> None:
     if "main_module" not in st.session_state:
-        st.session_state["main_module"] = "rs"  # começa em R&S se quiser
+        st.session_state["main_module"] = "rs"  # começa em R&S
     if "sub_module" not in st.session_state:
         st.session_state["sub_module"] = "candidatos"
 
@@ -136,7 +147,7 @@ def render_main_nav() -> str:
     ]
 
     st.markdown('<div class="main-nav-wrapper"><div class="main-nav-row">', unsafe_allow_html=True)
-    cols = st.columns(len(items) + 1)  # +1 para o botão Sair fixo à direita
+    cols = st.columns(len(items) + 1)  # +1 para o botão Sair
 
     # Botões principais
     for idx, (key, label) in enumerate(items):
@@ -151,7 +162,6 @@ def render_main_nav() -> str:
             st.markdown("</div>", unsafe_allow_html=True)
             if clicked:
                 st.session_state["main_module"] = key
-                # quando troca de módulo principal, reseta sub para o primeiro disponível
                 subs = SUBMODULES.get(key, [])
                 if subs:
                     st.session_state["sub_module"] = subs[0][0]
@@ -159,7 +169,7 @@ def render_main_nav() -> str:
                     st.session_state["sub_module"] = ""
                 main = key
 
-    # Botão SAIR fixo na barra (sempre visível no topo)
+    # Botão SAIR sempre visível na barra
     with cols[-1]:
         if st.button("⏏ Sair", key="btn_logout_main", use_container_width=True):
             keys = list(st.session_state.keys())
@@ -180,7 +190,6 @@ def render_sub_nav(main_module: str) -> str:
     cur_sub = st.session_state.get("sub_module", "")
 
     if subs:
-        # garante que sub atual é válido
         valid_ids = [sid for sid, _ in subs]
         if cur_sub not in valid_ids:
             cur_sub = valid_ids[0]
@@ -189,7 +198,6 @@ def render_sub_nav(main_module: str) -> str:
         st.markdown('<div class="glass-actions-row">', unsafe_allow_html=True)
         cols = st.columns(len(subs))
 
-        # botões dos submódulos (todos com mesmo tamanho)
         for i, (sid, label) in enumerate(subs):
             with cols[i]:
                 active = (sid == cur_sub)
@@ -318,17 +326,22 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
 # MAIN
 # ---------------------------------------------------------
 def main() -> None:
+    # Aplica o tema / CSS global
     inject_global_css()
+
+    # 🔐 Garante login ANTES de mostrar qualquer coisa do sistema
     username = ensure_login()
+
+    # Depois que passou daqui, usuário já está autenticado
     init_nav_state()
 
     main_module = render_main_nav()
     sub_module = render_sub_nav(main_module)
 
-    # Conteúdo
+    # Conteúdo principal
     route_section(main_module, sub_module, username)
 
-    # Badge com usuário
+    # Badge com usuário no canto
     render_user_badge(username)
 
 
