@@ -432,8 +432,7 @@ def run():
 
 📝 **Sobre a vaga:**  
 {desc}
-
-👉 Interessados(as), enviem o currículo atualizado ou chamem no WhatsApp.  
+  
 """
 
         texto_whats = f"""
@@ -443,8 +442,7 @@ def run():
 
 📝 *Sobre a vaga:*  
 {desc}
-
-Se tiver interesse, envie seu *currículo atualizado* ou fale comigo aqui! 🙂  
+  
 """
 
         col1, col2 = st.columns(2)
