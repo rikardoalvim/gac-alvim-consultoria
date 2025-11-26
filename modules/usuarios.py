@@ -1,218 +1,374 @@
 import os
-import streamlit as st
+import hashlib
+from typing import Tuple
+
 import pandas as pd
+import streamlit as st
 
-from .auth import load_users, save_users, hash_password
 
-PERFIS = [
-    ("MASTER", "MASTER - Acesso total"),
-    ("OPERACOES_GERAL", "Operações Geral"),
-    ("OPERACOES_RS", "Operações R&S"),
-    ("OPERACOES_SISTEMAS", "Operações Sistemas"),
-    ("FINANCEIRO", "Financeiro"),
+# ==========================================
+# CONSTANTES / ARQUIVOS
+# ==========================================
+
+# raiz do projeto (mesmo nível do parecer_app.py)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+USERS_FILE = os.path.join(BASE_DIR, "usuarios.csv")
+
+# Perfis disponíveis
+PERFIS_DISPONIVEIS = [
+    "MASTER",
+    "OPERACOES_GERAL",
+    "OPERACOES_RS",
+    "OPERACOES_SISTEMAS",
+    "FINANCEIRO",
 ]
 
 
-def _perfil_label_to_code(label: str) -> str:
-    for code, desc in PERFIS:
-        if desc == label or code == label:
-            return code
-    return "OPERACOES_GERAL"
+# ==========================================
+# UTILITÁRIOS DE SENHA / CSV
+# ==========================================
+
+def hash_password(password: str) -> str:
+    """Hash simples SHA256 (mesma lógica usada no auth)."""
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
 
-def _perfil_code_to_label(code: str) -> str:
-    for c, desc in PERFIS:
-        if c == code:
-            return desc
-    return "Operações Geral"
+def ensure_users_file() -> pd.DataFrame:
+    """
+    Garante que o usuarios.csv exista.
+    Se não existir, cria com Rikardo e Stephanie padrão.
+    """
+    if not os.path.exists(USERS_FILE):
+        data = [
+            {
+                "username": "rikardo.alvim",
+                "nome": "Rikardo Alvim",
+                "senha_hash": hash_password("2025"),
+                "must_change": 1,
+                "perfil": "MASTER",
+                "ativo": 1,
+            },
+            {
+                "username": "stephanie.alvim",
+                "nome": "Stephanie de Bellis Jalloul Alvim",
+                "senha_hash": hash_password("2025"),
+                "must_change": 1,
+                "perfil": "OPERACOES_RS",
+                "ativo": 1,
+            },
+        ]
+        df = pd.DataFrame(data)
+        df.to_csv(USERS_FILE, sep=";", index=False, encoding="utf-8")
+        return df
+
+    df = pd.read_csv(USERS_FILE, sep=";", encoding="utf-8")
+
+    # Garante colunas mínimas
+    for col, default in [
+        ("username", ""),
+        ("nome", ""),
+        ("senha_hash", ""),
+        ("must_change", 1),
+        ("perfil", "OPERACOES_GERAL"),
+        ("ativo", 1),
+    ]:
+        if col not in df.columns:
+            df[col] = default
+
+    # Ajusta tipos básicos
+    df["must_change"] = df["must_change"].fillna(1).astype(int)
+    df["ativo"] = df["ativo"].fillna(1).astype(int)
+    df["perfil"] = df["perfil"].fillna("OPERACOES_GERAL").astype(str)
+    df["username"] = df["username"].fillna("").astype(str)
+    df["nome"] = df["nome"].fillna("").astype(str)
+    df["senha_hash"] = df["senha_hash"].fillna("").astype(str)
+
+    # Salva de volta padronizado
+    df.to_csv(USERS_FILE, sep=";", index=False, encoding="utf-8")
+    return df
 
 
-def _render_table(df: pd.DataFrame) -> None:
+def load_users() -> pd.DataFrame:
+    """Carrega usuários (garantindo criação inicial se não existir)."""
+    return ensure_users_file()
+
+
+def save_users(df: pd.DataFrame) -> None:
+    """Salva DataFrame de usuários em usuarios.csv."""
+    df.to_csv(USERS_FILE, sep=";", index=False, encoding="utf-8")
+
+
+# ==========================================
+# RENDER TABELA GLASS (igual outros módulos)
+# ==========================================
+
+def render_tabela_html(df: pd.DataFrame, columns, headers) -> None:
+    """Renderiza DataFrame como tabela HTML (glass), igual vagas/candidatos."""
     if df.empty:
-        st.info("Nenhum usuário cadastrado.")
+        st.info("Nenhum registro encontrado.")
         return
 
-    df_view = df.copy()
-    df_view["Ativo"] = df_view["ativo"].map({1: "Sim", 0: "Não"})
-    df_view["Perfil"] = df_view["perfil"].apply(_perfil_code_to_label)
-    df_view["Precisa trocar senha"] = df_view["must_change"].map({1: "Sim", 0: "Não"})
+    df = df.copy().fillna("").astype(str)
 
-    df_view = df_view[["username", "nome", "Perfil", "Ativo", "Precisa trocar senha"]]
+    html = ["<table>"]
+    # Cabeçalho
+    html.append("<thead><tr>")
+    for h in headers:
+        html.append(f"<th>{h}</th>")
+    html.append("</tr></thead>")
 
-    # Usa o CSS global de <table> (liquid glass)
-    html = ["<table><thead><tr>"]
-    for col in df_view.columns:
-        html.append(f"<th>{col}</th>")
-    html.append("</tr></thead><tbody>")
-    for _, row in df_view.iterrows():
+    # Corpo
+    html.append("<tbody>")
+    for _, row in df[columns].iterrows():
         html.append("<tr>")
-        for col in df_view.columns:
+        for col in columns:
             html.append(f"<td>{row[col]}</td>")
         html.append("</tr>")
     html.append("</tbody></table>")
+
     st.markdown("".join(html), unsafe_allow_html=True)
 
 
-def run():
-    # Somente MASTER pode acessar
-    role = st.session_state.get("auth_role", "OPERACOES_GERAL")
+# ==========================================
+# FORMULÁRIOS
+# ==========================================
+
+def form_novo_usuario() -> None:
+    st.subheader("➕ Novo usuário")
+
+    username = st.text_input("Login (username)", placeholder="ex.: nome.sobrenome")
+    nome = st.text_input("Nome completo")
+    senha_inicial = st.text_input("Senha inicial", type="password")
+    perfil = st.selectbox("Perfil de acesso", PERFIS_DISPONIVEIS, index=0)
+    must_change = st.checkbox("Solicitar troca de senha no próximo login?", value=True)
+    ativo = st.checkbox("Usuário ativo?", value=True)
+
+    colb1, colb2 = st.columns(2)
+    with colb1:
+        if st.button("💾 Salvar usuário", use_container_width=True, key="btn_salvar_usuario_novo"):
+            if not username.strip():
+                st.error("Informe o login (username).")
+                return
+            if not nome.strip():
+                st.error("Informe o nome completo.")
+                return
+            if not senha_inicial.strip():
+                st.error("Informe uma senha inicial.")
+                return
+
+            df = load_users()
+            if username in df["username"].tolist():
+                st.error("Já existe um usuário com esse login.")
+                return
+
+            novo = {
+                "username": username.strip(),
+                "nome": nome.strip(),
+                "senha_hash": hash_password(senha_inicial.strip()),
+                "must_change": 1 if must_change else 0,
+                "perfil": perfil,
+                "ativo": 1 if ativo else 0,
+            }
+            df = pd.concat([df, pd.DataFrame([novo])], ignore_index=True)
+            save_users(df)
+            st.success("Usuário criado com sucesso!")
+
+    with colb2:
+        if st.button("↩ Voltar para lista", use_container_width=True, key="btn_voltar_lista_novo"):
+            st.session_state["usuarios_modo"] = "Listar"
+            st.experimental_rerun()
+
+
+def form_editar_usuario() -> None:
+    st.subheader("✏️ Editar usuário")
+
+    df = load_users()
+    if df.empty:
+        st.info("Não há usuários para editar.")
+        return
+
+    opcoes = {
+        row["username"]: f"{row['username']} - {row['nome']}"
+        for _, row in df.iterrows()
+    }
+
+    username_sel = st.selectbox(
+        "Selecione o usuário:",
+        options=list(opcoes.keys()),
+        format_func=lambda x: opcoes.get(x, x),
+        key="usuarios_edit_sel",
+    )
+
+    row = df[df["username"] == username_sel].iloc[0]
+
+    st.markdown(f"**Login:** `{row['username']}`")
+
+    nome_edit = st.text_input("Nome completo", value=row["nome"])
+    perfil_edit = st.selectbox(
+        "Perfil de acesso",
+        PERFIS_DISPONIVEIS,
+        index=PERFIS_DISPONIVEIS.index(row["perfil"])
+        if row["perfil"] in PERFIS_DISPONIVEIS
+        else 0,
+    )
+    ativo_edit = st.checkbox("Usuário ativo?", value=bool(row["ativo"]))
+    must_change_edit = st.checkbox(
+        "Solicitar troca de senha no próximo login?",
+        value=bool(row["must_change"]),
+    )
+    nova_senha = st.text_input(
+        "Nova senha (deixe em branco para manter a atual)",
+        type="password",
+    )
+
+    colb1, colb2 = st.columns(2)
+    with colb1:
+        if st.button("💾 Salvar alterações", use_container_width=True, key="btn_salvar_usuario_edit"):
+            mask = df["username"] == username_sel
+            if not mask.any():
+                st.error("Usuário não encontrado para atualização.")
+                return
+
+            df.loc[mask, "nome"] = nome_edit.strip()
+            df.loc[mask, "perfil"] = perfil_edit
+            df.loc[mask, "ativo"] = 1 if ativo_edit else 0
+            df.loc[mask, "must_change"] = 1 if must_change_edit else 0
+
+            if nova_senha.strip():
+                df.loc[mask, "senha_hash"] = hash_password(nova_senha.strip())
+                df.loc[mask, "must_change"] = 1  # força trocar após reset
+
+            save_users(df)
+            st.success("Usuário atualizado com sucesso!")
+
+    with colb2:
+        if st.button("↩ Voltar para lista", use_container_width=True, key="btn_voltar_lista_edit"):
+            st.session_state["usuarios_modo"] = "Listar"
+            st.experimental_rerun()
+
+
+def form_excluir_usuario() -> None:
+    st.subheader("🗑️ Excluir usuário")
+
+    df = load_users()
+    if df.empty:
+        st.info("Não há usuários para excluir.")
+        return
+
+    opcoes = {
+        row["username"]: f"{row['username']} - {row['nome']}"
+        for _, row in df.iterrows()
+    }
+
+    username_sel = st.selectbox(
+        "Selecione o usuário para excluir:",
+        options=list(opcoes.keys()),
+        format_func=lambda x: opcoes.get(x, x),
+        key="usuarios_del_sel",
+    )
+
+    st.warning(
+        f"Esta ação irá remover definitivamente o usuário **{opcoes[username_sel]}**."
+    )
+    confirmar = st.checkbox("Confirmo que desejo excluir este usuário.")
+
+    colb1, colb2 = st.columns(2)
+    with colb1:
+        if st.button("🗑️ Excluir usuário", use_container_width=True, key="btn_excluir_usuario"):
+            if not confirmar:
+                st.error("Marque a opção de confirmação para excluir.")
+                return
+
+            df = df[df["username"] != username_sel]
+            save_users(df)
+            st.success("Usuário excluído com sucesso!")
+
+    with colb2:
+        if st.button("↩ Voltar para lista", use_container_width=True, key="btn_voltar_lista_del"):
+            st.session_state["usuarios_modo"] = "Listar"
+            st.experimental_rerun()
+
+
+# ==========================================
+# RUN (PONTO DE ENTRADA)
+# ==========================================
+
+def run() -> None:
+    """
+    Tela de manutenção de usuários.
+    Apenas perfil MASTER deveria ver este módulo (o menu já restringe),
+    mas aqui garantimos mais uma vez.
+    """
+    role = st.session_state.get("auth_role", "MASTER")
     if role != "MASTER":
-        st.error("Apenas usuários com perfil MASTER podem acessar o cadastro de usuários.")
+        st.error("Apenas usuários com perfil MASTER podem gerenciar usuários.")
         return
 
     st.header("👥 Cadastro de Usuários")
 
+    # Estado de modo (Listar / Novo / Editar / Excluir)
     if "usuarios_modo" not in st.session_state:
         st.session_state["usuarios_modo"] = "Listar"
 
-    colA, colB, colC, colD = st.columns(4)
-    with colA:
-        if st.button("📋 Listar", use_container_width=True):
-            st.session_state["usuarios_modo"] = "Listar"
-    with colB:
-        if st.button("➕ Novo usuário", use_container_width=True):
-            st.session_state["usuarios_modo"] = "Novo"
-    with colC:
-        if st.button("✏️ Editar usuário", use_container_width=True):
-            st.session_state["usuarios_modo"] = "Editar"
-    with colD:
-        if st.button("🗑 Excluir usuário", use_container_width=True):
-            st.session_state["usuarios_modo"] = "Excluir"
+    modo = st.session_state["usuarios_modo"]
 
+    # Barra de ações (botões no topo)
+    st.markdown('<div class="glass-actions-row">', unsafe_allow_html=True)
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        if st.button("📋 Listar usuários", use_container_width=True, key="btn_usuarios_listar"):
+            st.session_state["usuarios_modo"] = "Listar"
+            modo = "Listar"
+    with col2:
+        if st.button("➕ Novo usuário", use_container_width=True, key="btn_usuarios_novo"):
+            st.session_state["usuarios_modo"] = "Novo"
+            modo = "Novo"
+    with col3:
+        if st.button("✏️ Editar usuário", use_container_width=True, key="btn_usuarios_editar"):
+            st.session_state["usuarios_modo"] = "Editar"
+            modo = "Editar"
+    with col4:
+        if st.button("🗑️ Excluir usuário", use_container_width=True, key="btn_usuarios_excluir"):
+            st.session_state["usuarios_modo"] = "Excluir"
+            modo = "Excluir"
+
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown(f"**Modo atual:** {modo}")
     st.markdown("---")
 
-    modo = st.session_state["usuarios_modo"]
-    df = load_users()
-
-    # ---------------------------
-    # LISTAR
-    # ---------------------------
+    # MODO LISTAR
     if modo == "Listar":
-        st.subheader("📋 Usuários cadastrados")
-        _render_table(df)
+        df = load_users()
+        if df.empty:
+            st.info("Nenhum usuário cadastrado ainda.")
+            return
+
+        df_view = df.copy()
+        # Exibe sem a coluna de senha_hash
+        if "senha_hash" in df_view.columns:
+            df_view = df_view.drop(columns=["senha_hash"])
+
+        render_tabela_html(
+            df_view,
+            columns=["username", "nome", "perfil", "must_change", "ativo"],
+            headers=["Login", "Nome", "Perfil", "Trocar senha?", "Ativo"],
+        )
         return
 
-    # ---------------------------
-    # NOVO USUÁRIO
-    # ---------------------------
+    # MODO NOVO
     if modo == "Novo":
-        st.subheader("➕ Novo usuário")
-
-        username = st.text_input("Login (username)")
-        nome = st.text_input("Nome completo")
-        perfil_label = st.selectbox(
-            "Perfil de acesso",
-            [desc for _, desc in PERFIS],
-        )
-        ativo = st.checkbox("Usuário ativo", value=True)
-        senha1 = st.text_input("Senha inicial", type="password")
-        senha2 = st.text_input("Confirme a senha inicial", type="password")
-
-        if st.button("💾 Salvar novo usuário", use_container_width=True):
-            if not username.strip():
-                st.error("Informe o login (username).")
-            elif not senha1.strip():
-                st.error("Informe a senha inicial.")
-            elif senha1 != senha2:
-                st.error("As senhas não coincidem.")
-            elif (df["username"].str.lower() == username.strip().lower()).any():
-                st.error("Já existe um usuário com esse login.")
-            else:
-                perfil_code = _perfil_label_to_code(perfil_label)
-                novo = {
-                    "username": username.strip(),
-                    "nome": nome.strip() or username.strip(),
-                    "senha_hash": hash_password(senha1),
-                    "must_change": 1,  # novo usuário troca senha no primeiro login
-                    "perfil": perfil_code,
-                    "ativo": 1 if ativo else 0,
-                }
-                df = pd.concat([df, pd.DataFrame([novo])], ignore_index=True)
-                save_users(df)
-                st.success("Usuário criado com sucesso!")
-                st.session_state["usuarios_modo"] = "Listar"
-                st.experimental_rerun()
+        form_novo_usuario()
         return
 
-    # ---------------------------
-    # EDITAR USUÁRIO
-    # ---------------------------
+    # MODO EDITAR
     if modo == "Editar":
-        st.subheader("✏️ Editar usuário")
-
-        if df.empty:
-            st.info("Nenhum usuário cadastrado.")
-            return
-
-        usuarios_list = df["username"].tolist()
-        usuario_sel = st.selectbox("Selecione o usuário:", usuarios_list)
-
-        row = df[df["username"] == usuario_sel].iloc[0]
-
-        nome_edit = st.text_input("Nome completo", value=row["nome"])
-        perfil_label_edit = st.selectbox(
-            "Perfil de acesso",
-            [desc for _, desc in PERFIS],
-            index=[c for c, _ in PERFIS].index(row["perfil"]) if row["perfil"] in [c for c, _ in PERFIS] else 1,
-        )
-        ativo_edit = st.checkbox("Usuário ativo", value=bool(row["ativo"]))
-        reset_senha = st.checkbox("Redefinir senha (obrigar troca no próximo login?)")
-
-        nova_senha1 = ""
-        nova_senha2 = ""
-        if reset_senha:
-            nova_senha1 = st.text_input("Nova senha inicial", type="password")
-            nova_senha2 = st.text_input("Confirme a nova senha", type="password")
-
-        if st.button("💾 Salvar alterações", use_container_width=True):
-            perfil_code = _perfil_label_to_code(perfil_label_edit)
-
-            df.loc[df["username"] == usuario_sel, "nome"] = nome_edit.strip() or usuario_sel
-            df.loc[df["username"] == usuario_sel, "perfil"] = perfil_code
-            df.loc[df["username"] == usuario_sel, "ativo"] = 1 if ativo_edit else 0
-
-            if reset_senha:
-                if not nova_senha1.strip():
-                    st.error("Informe a nova senha.")
-                    return
-                if nova_senha1 != nova_senha2:
-                    st.error("As senhas não coincidem.")
-                    return
-                df.loc[df["username"] == usuario_sel, "senha_hash"] = hash_password(nova_senha1)
-                df.loc[df["username"] == usuario_sel, "must_change"] = 1
-            save_users(df)
-            st.success("Usuário atualizado com sucesso!")
-            st.session_state["usuarios_modo"] = "Listar"
-            st.experimental_rerun()
+        form_editar_usuario()
         return
 
-    # ---------------------------
-    # EXCLUIR USUÁRIO
-    # ---------------------------
+    # MODO EXCLUIR
     if modo == "Excluir":
-        st.subheader("🗑 Excluir usuário")
-
-        if df.empty:
-            st.info("Nenhum usuário cadastrado.")
-            return
-
-        usuarios_list = df["username"].tolist()
-        usuario_sel = st.selectbox("Selecione o usuário para excluir:", usuarios_list)
-
-        st.warning(
-            f"Tem certeza que deseja excluir o usuário **{usuario_sel}**? "
-            "Essa ação não poderá ser desfeita."
-        )
-        confirma = st.text_input('Digite "EXCLUIR" para confirmar')
-
-        if st.button("⚠ Confirmar exclusão", use_container_width=True):
-            if confirma.strip().upper() != "EXCLUIR":
-                st.error('Digite exatamente "EXCLUIR" para confirmar.')
-            else:
-                df = df[df["username"] != usuario_sel]
-                save_users(df)
-                st.success(f"Usuário {usuario_sel} excluído com sucesso.")
-                st.session_state["usuarios_modo"] = "Listar"
-                st.experimental_rerun()
+        form_excluir_usuario()
         return
+
 
