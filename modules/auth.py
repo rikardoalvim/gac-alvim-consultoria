@@ -1,6 +1,6 @@
 import os
 import hashlib
-from typing import Tuple
+from typing import Optional
 
 import pandas as pd
 import streamlit as st
@@ -9,6 +9,8 @@ import streamlit as st
 MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.abspath(os.path.join(MODULE_DIR, ".."))
 USERS_FILE = os.path.join(ROOT_DIR, "usuarios.csv")
+
+REQUIRED_COLS = ["username", "nome", "senha_hash", "must_change", "perfil", "ativo"]
 
 
 # -----------------------------
@@ -39,42 +41,75 @@ def _create_default_users_df() -> pd.DataFrame:
             "ativo": 1,
         },
     ]
-    return pd.DataFrame(data)
+    return pd.DataFrame(data, columns=REQUIRED_COLS)
+
+
+def _save_df(df: pd.DataFrame) -> None:
+    """Grava o DataFrame de usuários no CSV com ; como separador."""
+    df.to_csv(USERS_FILE, sep=";", index=False, encoding="utf-8")
+
+
+def _recreate_users_file_with_defaults(msg: Optional[str] = None) -> pd.DataFrame:
+    """Recria o arquivo de usuários com os padrões."""
+    df = _create_default_users_df()
+    _save_df(df)
+    if msg:
+        st.warning(msg)
+    return df
 
 
 def load_users() -> pd.DataFrame:
-    """Carrega usuários do CSV; se não existir, cria com usuários padrão."""
+    """
+    Carrega usuários do CSV.
+    - Se não existir, cria com usuários padrão.
+    - Se estiver corrompido ou sem colunas obrigatórias, recria com padrão.
+    """
     if not os.path.exists(USERS_FILE):
         df = _create_default_users_df()
-        df.to_csv(USERS_FILE, index=False, encoding="utf-8")
+        _save_df(df)
         return df
 
-    df = pd.read_csv(USERS_FILE, dtype=str)
+    try:
+        df = pd.read_csv(USERS_FILE, sep=";", dtype=str)
+    except Exception:
+        return _recreate_users_file_with_defaults(
+            "Arquivo de usuários estava inválido. Foi recriado com usuários padrão."
+        )
+
+    # Garante colunas obrigatórias
+    missing = [c for c in REQUIRED_COLS if c not in df.columns]
+    if missing:
+        return _recreate_users_file_with_defaults(
+            "Estrutura de usuários inconsistente. Arquivo recriado com usuários padrão."
+        )
+
     # Normaliza tipos
-    if "must_change" in df.columns:
-        df["must_change"] = df["must_change"].fillna("0").astype(int)
-    else:
-        df["must_change"] = 0
-
-    if "ativo" in df.columns:
-        df["ativo"] = df["ativo"].fillna("1").astype(int)
-    else:
-        df["ativo"] = 1
-
-    if "perfil" not in df.columns:
-        df["perfil"] = "OPERACOES_GERAL"
+    df["must_change"] = df["must_change"].fillna("0").astype(int)
+    df["ativo"] = df["ativo"].fillna("1").astype(int)
+    df["perfil"] = df["perfil"].fillna("OPERACOES_GERAL").astype(str)
 
     df["username"] = df["username"].astype(str)
-    df["nome"] = df.get("nome", "").astype(str)
+    df["nome"] = df["nome"].astype(str)
     df["senha_hash"] = df["senha_hash"].astype(str)
-    df["perfil"] = df["perfil"].astype(str)
 
     return df
 
 
 def save_users(df: pd.DataFrame) -> None:
     """Grava o DataFrame de usuários no CSV."""
-    df.to_csv(USERS_FILE, index=False, encoding="utf-8")
+    # Garante ordem das colunas
+    for col in REQUIRED_COLS:
+        if col not in df.columns:
+            if col == "must_change":
+                df[col] = 0
+            elif col == "ativo":
+                df[col] = 1
+            elif col == "perfil":
+                df[col] = "OPERACOES_GERAL"
+            else:
+                df[col] = ""
+    df = df[REQUIRED_COLS]
+    _save_df(df)
 
 
 # -----------------------------
@@ -131,7 +166,7 @@ def _render_login(df: pd.DataFrame) -> None:
                 else:
                     st.session_state["auth_username"] = row["username"]
                     st.session_state["auth_role"] = row.get("perfil", "OPERACOES_GERAL")
-                    st.session_state["auth_need_change"] = bool(row.get("must_change", 0))
+                    st.session_state["auth_need_change"] = bool(int(row.get("must_change", 0)))
                     st.experimental_rerun()
 
     with col2:
@@ -149,7 +184,7 @@ def _render_login(df: pd.DataFrame) -> None:
 # -----------------------------
 # Função principal usada pelo parecer_app
 # -----------------------------
-def run() -> str | None:
+def run() -> Optional[str]:
     """
     Desenha tela de login ou troca de senha.
     Retorna o username logado (quando já autenticado) ou None.
@@ -182,5 +217,6 @@ def run() -> str | None:
     # Caso não haja usuário na sessão, mostra login
     _render_login(df)
     return None
+
 
 
