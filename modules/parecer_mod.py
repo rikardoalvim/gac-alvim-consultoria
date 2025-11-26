@@ -1,8 +1,8 @@
 import os
 from datetime import datetime
 
-import streamlit as st
 import pandas as pd
+import streamlit as st
 
 from .core import (
     BASE_DIR,
@@ -17,15 +17,14 @@ from .core import (
     carregar_vagas,
     carregar_vaga_candidatos,
     carregar_pareceres_log,
-    LOG_PAR,
 )
 
 
-def run():
-    st.header("📝 Parecer de Triagem")
-
-    # session_state default
-    for campo, padrao in {
+# ---------------------------------------------------------
+# HELPERS
+# ---------------------------------------------------------
+def _init_session_defaults():
+    defaults = {
         "cliente": "",
         "cargo": "",
         "nome": "",
@@ -37,103 +36,132 @@ def run():
         "analise_perfil": "",
         "conclusao_texto": "",
         "id_candidato_selecionado": "",
-    }.items():
-        if campo not in st.session_state:
-            st.session_state[campo] = padrao
+        "id_vaga_selecionada": "",
+        "cv_path_auto": "",
+    }
+    for k, v in defaults.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
 
-    # =========================================================
-    # VINCULAR CANDIDATO (APENAS COM VÍNCULO + VAGA ABERTA/EM ANDAMENTO)
-    # =========================================================
-    st.subheader("Vincular a um candidato (opcional)")
 
-    df_cand = carregar_candidatos()
-    df_vagas = carregar_vagas()
+def _carregar_vinculos_validos():
+    """
+    Retorna DF com vínculos (vaga x candidato) apenas para vagas:
+    - Status: Aberta ou Em andamento
+    Junto com dados da vaga e do candidato.
+    """
     df_vinc = carregar_vaga_candidatos()
-    id_candidato_escolhido = ""
+    df_vagas = carregar_vagas()
+    df_cand = carregar_candidatos()
 
-    # Situações em que não conseguimos filtrar
-    if df_cand.empty:
-        st.info("Nenhum candidato cadastrado ainda.")
-    elif df_vagas.empty or df_vinc.empty:
-        st.info("Nenhuma vaga vinculada encontrada para montar a lista de candidatos.")
+    if df_vinc.empty or df_vagas.empty or df_cand.empty:
+        return pd.DataFrame()
+
+    df_vagas = df_vagas.copy()
+    df_vinc = df_vinc.copy()
+    df_cand = df_cand.copy()
+
+    df_vagas["id_vaga"] = df_vagas["id_vaga"].astype(str)
+    df_vagas["status"] = df_vagas.get("status", "").astype(str)
+
+    df_vinc["id_vaga"] = df_vinc["id_vaga"].astype(str)
+    df_vinc["id_candidato"] = df_vinc["id_candidato"].astype(str)
+
+    df_cand["id_candidato"] = df_cand["id_candidato"].astype(str)
+
+    vagas_validas = df_vagas[
+        df_vagas["status"].isin(["Aberta", "Em andamento"])
+    ]
+
+    if vagas_validas.empty:
+        return pd.DataFrame()
+
+    df = df_vinc.merge(
+        vagas_validas[["id_vaga", "nome_cliente", "cargo"]],
+        on="id_vaga",
+        how="inner",
+    ).merge(
+        df_cand,
+        on="id_candidato",
+        how="inner",
+        suffixes=("", "_cand"),
+    )
+
+    # Garante algumas colunas básicas de candidato
+    for col in ["nome", "cidade", "idade", "linkedin", "caminho_cv"]:
+        if col not in df.columns:
+            df[col] = ""
+
+    return df
+
+
+# ---------------------------------------------------------
+# MAIN
+# ---------------------------------------------------------
+def run():
+    _init_session_defaults()
+
+    st.header("📝 Parecer de Triagem")
+
+    # =====================================================
+    # 1) VÍNCULO VAGA × CANDIDATO (APENAS VAGAS ABERTAS/EM ANDAMENTO)
+    # =====================================================
+    st.subheader("Vínculo vaga × candidato")
+
+    df_vinc_full = _carregar_vinculos_validos()
+    if df_vinc_full.empty:
+        st.info("Nenhum candidato vinculado a vagas Abertas/Em andamento. Cadastre vínculos em Vagas.")
     else:
-        # Vagas com status Aberta ou Em andamento
-        df_vagas_validas = df_vagas[
-            df_vagas["status"].isin(["Aberta", "Em andamento"])
-        ].copy()
+        df_vinc_full = df_vinc_full.reset_index(drop=True)
 
-        if df_vagas_validas.empty:
-            st.info("Não há vagas em status 'Aberta' ou 'Em andamento'.")
-        else:
-            # vínculos apenas dessas vagas
-            ids_vagas_validas = set(df_vagas_validas["id_vaga"].astype(str).tolist())
-            df_vinc_validos = df_vinc[
-                df_vinc["id_vaga"].isin(ids_vagas_validas)
-            ].copy()
+        opcoes = {
+            idx: f"[Vaga {row['id_vaga']}] {row['nome_cliente']} - {row['cargo']} | Cand.: {row['nome']} ({row['cidade']})"
+            for idx, row in df_vinc_full.iterrows()
+        }
 
-            if df_vinc_validos.empty:
-                st.info(
-                    "Não há candidatos vinculados a vagas em status 'Aberta' ou 'Em andamento'."
-                )
+        idx_sel = st.selectbox(
+            "Selecione a combinação vaga × candidato:",
+            options=list(opcoes.keys()),
+            format_func=lambda x: opcoes[x],
+            key="parecer_vinc_sel",
+        )
+
+        if st.button("📥 Carregar dados do vínculo"):
+            row = df_vinc_full.loc[idx_sel]
+
+            # Dados de vaga
+            st.session_state["cliente"] = row.get("nome_cliente", "")
+            st.session_state["cargo"] = row.get("cargo", "")
+
+            # Dados do candidato
+            st.session_state["nome"] = row.get("nome", "")
+            st.session_state["idade"] = str(row.get("idade", "") or "")
+            st.session_state["localidade"] = row.get("cidade", "")
+            st.session_state["linkedin"] = row.get("linkedin", "")
+
+            # IDs para log
+            st.session_state["id_candidato_selecionado"] = str(row.get("id_candidato", ""))
+            st.session_state["id_vaga_selecionada"] = str(row.get("id_vaga", ""))
+
+            # CV atrelado ao candidato (se existir)
+            cv_path = str(row.get("caminho_cv", "") or "").strip()
+            if cv_path and os.path.isfile(cv_path):
+                st.session_state["cv_path_auto"] = cv_path
             else:
-                # candidatos provenientes desses vínculos
-                ids_cand_validos = (
-                    df_vinc_validos["id_candidato"].astype(str).unique().tolist()
-                )
+                st.session_state["cv_path_auto"] = ""
 
-                df_cand_validos = df_cand[
-                    df_cand["id_candidato"].astype(str).isin(ids_cand_validos)
-                ].copy()
+            st.success("Dados de vaga e candidato carregados no formulário.")
 
-                if df_cand_validos.empty:
-                    st.info(
-                        "Nenhum candidato cadastrado corresponde aos vínculos encontrados."
-                    )
-                else:
-                    # monta opções (id int -> descrição)
-                    op_cand = {
-                        int(row["id_candidato"]): f"{row['nome']} - {row['cidade']} - {row['telefone']}"
-                        for _, row in df_cand_validos.iterrows()
-                    }
-
-                    id_candidato_escolhido = st.selectbox(
-                        "Selecione um candidato:",
-                        options=["(Nenhum)"] + list(op_cand.keys()),
-                        format_func=lambda x: op_cand[x] if x != "(Nenhum)" else x,
-                        key="parecer_cand_sel",
-                    )
-
-                    if (
-                        id_candidato_escolhido != "(Nenhum)"
-                        and st.button("Carregar dados do candidato")
-                    ):
-                        # linha do candidato selecionado
-                        row = df_cand_validos[
-                            df_cand_validos["id_candidato"]
-                            == str(id_candidato_escolhido)
-                        ].iloc[0]
-
-                        st.session_state["nome"] = row["nome"]
-                        st.session_state["idade"] = str(row["idade"])
-                        st.session_state["localidade"] = row["cidade"]
-                        st.session_state["linkedin"] = row.get("linkedin", "")
-                        st.session_state["id_candidato_selecionado"] = str(
-                            row["id_candidato"]
-                        )
-
-                        st.success("Dados do candidato carregados.")
-
-    # =========================================================
-    # VINCULAR CLIENTE (OPCIONAL)
-    # =========================================================
+    # =====================================================
+    # 2) VINCULAR CLIENTE MANUAL (OPCIONAL)
+    # =====================================================
     st.subheader("Vincular a um cliente (opcional)")
+
     df_cli = carregar_clientes()
     if df_cli.empty:
         st.info("Nenhum cliente cadastrado ainda.")
     else:
-        op_cli = {
-            int(row["id_cliente"]): row["nome_cliente"] for _, row in df_cli.iterrows()
-        }
+        op_cli = {int(row["id_cliente"]): row["nome_cliente"] for _, row in df_cli.iterrows()}
         id_cli_sel = st.selectbox(
             "Selecione o cliente:",
             options=["(Nenhum)"] + list(op_cli.keys()),
@@ -146,32 +174,26 @@ def run():
 
     st.markdown("---")
 
-    # =========================================================
-    # IA OPCIONAL
-    # =========================================================
+    # =====================================================
+    # 3) IA OPCIONAL
+    # =====================================================
     with st.expander("🤖 IA - Preencher campos automaticamente (opcional)", expanded=False):
         col_ia, _ = st.columns(2)
         with col_ia:
             if st.button("🔌 Testar conexão OpenAI"):
-                from .core import get_openai_client
+                try:
+                    from .core import get_openai_client
 
-                client = get_openai_client()
-                if not client:
-                    st.error("OpenAI não configurado (biblioteca ou OPENAI_API_KEY).")
-                else:
-                    try:
-                        _ = client.responses.create(
-                            model="gpt-4.1-mini", input="OK?"
-                        )
+                    client = get_openai_client()
+                    if not client:
+                        st.error("OpenAI não configurado (biblioteca ou OPENAI_API_KEY).")
+                    else:
+                        _ = client.responses.create(model="gpt-4.1-mini", input="OK?")
                         st.success("Conexão OK.")
-                    except Exception as e:
-                        st.error(f"Erro na conexão: {e}")
+                except Exception as e:
+                    st.error(f"Erro na conexão: {e}")
 
-        uploaded_pdf = st.file_uploader(
-            "📎 PDF do currículo (opcional)",
-            type=["pdf"],
-            key="parecer_pdf_ia",
-        )
+        uploaded_pdf = st.file_uploader("📎 PDF do currículo (opcional)", type=["pdf"], key="parecer_pdf_ia")
         obs_ia = st.text_area("Observações para IA (opcional)", height=100)
 
         if st.button("✨ Gerar campos via IA"):
@@ -179,16 +201,9 @@ def run():
                 st.warning("Envie um PDF ou escreva observações para usar a IA.")
             else:
                 try:
-                    texto_pdf = (
-                        extract_text_from_pdf(uploaded_pdf) if uploaded_pdf else ""
-                    )
+                    texto_pdf = extract_text_from_pdf(uploaded_pdf) if uploaded_pdf else ""
                     texto_base = (texto_pdf or "") + "\n\n" + (obs_ia or "")
-                    (
-                        nome_ai,
-                        resumo_ai,
-                        analise_ai,
-                        concl_ai,
-                    ) = gerar_campos_via_openai(texto_base)
+                    nome_ai, resumo_ai, analise_ai, concl_ai = gerar_campos_via_openai(texto_base)
                     if nome_ai:
                         st.session_state["nome"] = nome_ai
                     if resumo_ai:
@@ -202,11 +217,12 @@ def run():
                     st.error(f"Erro ao usar IA: {e}")
 
     st.markdown("---")
+
+    # =====================================================
+    # 4) FORMULÁRIO DO PARECER
+    # =====================================================
     st.subheader("Formulário do parecer")
 
-    # =========================================================
-    # CAMPOS PRINCIPAIS
-    # =========================================================
     col1, col2 = st.columns(2)
     with col1:
         st.text_input("Cliente", key="cliente")
@@ -215,9 +231,7 @@ def run():
     with col2:
         st.text_input("Cargo", key="cargo")
         st.text_input("Localidade", key="localidade")
-        st.text_input(
-            "Pretensão Salarial (ex.: R$ 4.500,00)", key="pretensao"
-        )
+        st.text_input("Pretensão Salarial (ex.: R$ 4.500,00)", key="pretensao")
 
     st.text_input("LinkedIn (opcional)", key="linkedin")
 
@@ -246,34 +260,36 @@ def run():
     )
 
     st.markdown("---")
+
+    # =====================================================
+    # 5) ARQUIVOS / SAÍDA
+    # =====================================================
     st.subheader("Arquivos e saída")
 
-    formato = st.radio("Formato do parecer", ["PDF", "DOCX"], index=0)
+    formato = st.radio("Formato do parecer", ["PDF", "DOCX"], index=0, horizontal=True)
 
-    pasta_cv = st.text_input("Pasta com currículos (PDF)", value=BASE_DIR)
-    lista_cv = []
-    if os.path.isdir(pasta_cv):
-        lista_cv = [
-            f for f in os.listdir(pasta_cv) if f.lower().endswith(".pdf")
-        ]
+    output_folder = st.text_input("Pasta de saída dos pareceres", value=BASE_DIR)
 
-    selected_cv = st.selectbox(
-        "Anexar currículo PDF ao parecer (opcional)",
-        ["(Não anexar)"] + lista_cv,
-    )
+    cv_path_auto = st.session_state.get("cv_path_auto", "")
+    anexar_cv = False
 
-    output_folder = st.text_input(
-        "Pasta de saída dos pareceres", value=BASE_DIR
-    )
+    if cv_path_auto:
+        cv_name = os.path.basename(cv_path_auto)
+        st.caption(f"📎 CV vinculado ao candidato: **{cv_name}**")
+        anexar_cv = st.checkbox(
+            "Anexar automaticamente este currículo ao PDF gerado",
+            value=True,
+            key="chk_anexar_cv_auto",
+        )
+    else:
+        st.caption("Nenhum currículo vinculado ao candidato foi encontrado no cadastro.")
 
-    nome_para_base = (
-        st.session_state["nome"] if st.session_state["nome"] else "Candidato"
-    )
+    nome_para_base = st.session_state["nome"] if st.session_state["nome"] else "Candidato"
     nome_base = f"Parecer_{nome_para_base.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M')}"
 
-    # =========================================================
-    # GERAR PARECER
-    # =========================================================
+    # =====================================================
+    # 6) GERAR PARECER
+    # =====================================================
     if st.button("💾 Gerar parecer e registrar histórico"):
         nome = st.session_state["nome"]
         if not nome.strip():
@@ -293,9 +309,8 @@ def run():
             resumo_prof = st.session_state["resumo_profissional"]
             analise_prof = st.session_state["analise_perfil"]
             conclusao_txt = st.session_state["conclusao_texto"]
-            id_cand_log = st.session_state.get(
-                "id_candidato_selecionado", ""
-            )
+            id_cand_log = st.session_state.get("id_candidato_selecionado", "")
+            id_vaga_log = st.session_state.get("id_vaga_selecionada", "")
 
             if formato == "PDF":
                 parecer_bytes = build_parecer_pdf_to_bytes(
@@ -310,11 +325,10 @@ def run():
                     conclusao_txt,
                     linkedin,
                 )
-                if selected_cv != "(Não anexar)":
-                    resume_path = os.path.join(pasta_cv, selected_cv)
-                    parecer_bytes = merge_pdfs_bytes(
-                        parecer_bytes, resume_path
-                    )
+
+                # Anexa CV do candidato (se existir e estiver marcado)
+                if anexar_cv and cv_path_auto and os.path.isfile(cv_path_auto):
+                    parecer_bytes = merge_pdfs_bytes(parecer_bytes, cv_path_auto)
 
                 filename = nome_base + ".pdf"
                 caminho_final = os.path.join(output_folder, filename)
@@ -336,6 +350,7 @@ def run():
                     formato="PDF",
                     caminho_arquivo=caminho_final,
                     id_candidato=id_cand_log,
+                    id_vaga=id_vaga_log,
                     status_etapa="Em avaliação",
                     status_contratacao="Pendente",
                     motivo_decline="",
@@ -382,6 +397,7 @@ def run():
                     formato="DOCX",
                     caminho_arquivo=caminho_final,
                     id_candidato=id_cand_log,
+                    id_vaga=id_vaga_log,
                     status_etapa="Em avaliação",
                     status_contratacao="Pendente",
                     motivo_decline="",
@@ -392,14 +408,12 @@ def run():
                     "⬇️ Baixar DOCX",
                     data=parecer_bytes,
                     file_name=filename,
-                    mime=(
-                        "application/"
-                        "vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    ),
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 )
 
         except Exception as e:
             st.error(f"Erro ao gerar parecer: {e}")
+
 
 
 
