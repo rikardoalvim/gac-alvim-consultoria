@@ -15,10 +15,11 @@ MOD_DIR = os.path.join(BASE_DIR, "modules")
 if MOD_DIR not in sys.path:
     sys.path.append(MOD_DIR)
 
-from modules import auth  # obrigatório
-from modules.ui_style import inject_global_css  # CSS global (liquid glass)
+# Autenticação e estilo global
+from modules import auth
+from modules.ui_style import inject_global_css
 
-# Módulos opcionais
+# Módulos opcionais (cada um precisa ter uma função run())
 try:
     from modules import dashboard
 except Exception:
@@ -76,7 +77,7 @@ st.set_page_config(
 
 
 # ---------------------------------------------------------
-# MAPA DE MÓDULOS E PERFIS DE ACESSO
+# MAPA DE MÓDULOS E SUBMÓDULOS
 # ---------------------------------------------------------
 SUBMODULES = {
     "dashboard": [],
@@ -91,7 +92,7 @@ SUBMODULES = {
     "financeiro": [("financeiro", "💰 Financeiro")],
 }
 
-# Quais módulos e submódulos cada perfil enxerga
+# Perfis de acesso X o que cada um enxerga
 ROLE_ACCESS = {
     "MASTER": {
         "main": ["dashboard", "cadastros", "rs", "sistemas", "financeiro"],
@@ -133,18 +134,18 @@ ROLE_ACCESS = {
 
 
 def get_role_config() -> dict:
+    """Retorna o dicionário de acesso para o perfil atual."""
     role = st.session_state.get("auth_role", "MASTER")
     return ROLE_ACCESS.get(role, ROLE_ACCESS["MASTER"])
 
 
 # ---------------------------------------------------------
-# LOGIN – garante que o sistema só aparece após logar
+# LOGIN – garante que só mostra o sistema depois de logar
 # ---------------------------------------------------------
 def ensure_login() -> str:
     """
     Chama auth.run(), que desenha tela de login ou troca de senha.
-    Se não houver usuário logado, st.stop() interrompe a app
-    (assim nada do sistema aparece por trás).
+    Se não houver usuário logado, o próprio auth.run() segura na tela.
     """
     possible_username: Optional[str] = None
     try:
@@ -162,8 +163,8 @@ def ensure_login() -> str:
         or "Usuário"
     )
 
-    # Se ainda está no placeholder "Usuário", considera não logado
     if username == "Usuário":
+        # Ainda não tem login válido; auth.run() já mostrou tela de login
         st.stop()
 
     return username
@@ -186,7 +187,7 @@ def render_main_nav() -> str:
     role_cfg = get_role_config()
     allowed_main = set(role_cfg.get("main", []))
 
-    # Ordem e labels fixas
+    # Ordem fixa dos módulos
     items_all = [
         ("dashboard", "📊 Dashboard"),
         ("cadastros", "📁 Cadastros"),
@@ -195,17 +196,17 @@ def render_main_nav() -> str:
         ("financeiro", "💰 Financeiro"),
     ]
 
-    # Filtra pelo perfil
+    # Apenas os módulos permitidos para o perfil
     visible_items = [item for item in items_all if item[0] in allowed_main]
 
-    # Garante que main_module atual é permitido
+    # Garante que o main_module atual é permitido
     main = st.session_state.get("main_module", "rs")
     if main not in allowed_main and visible_items:
         main = visible_items[0][0]
         st.session_state["main_module"] = main
 
     st.markdown('<div class="main-nav-wrapper"><div class="main-nav-row">', unsafe_allow_html=True)
-    cols = st.columns(len(visible_items) + 1)  # +1 para "Sair"
+    cols = st.columns(len(visible_items) + 1)  # +1 para o botão Sair na barra
 
     # Botões principais
     for idx, (key, label) in enumerate(visible_items):
@@ -221,20 +222,19 @@ def render_main_nav() -> str:
             if clicked:
                 st.session_state["main_module"] = key
                 subs = SUBMODULES.get(key, [])
-                # ajusta sub_module ao primeiro sub permitido
-                role_cfg = get_role_config()
-                allowed_subs_map = role_cfg.get("subs", {})
+                # Ajusta sub_module pro primeiro sub permitido
+                role_cfg_local = get_role_config()
+                allowed_subs_map = role_cfg_local.get("subs", {})
                 allowed_for_module = allowed_subs_map.get(
                     key, [sid for sid, _ in subs]
                 )
-                # pega primeiro sub permitido
                 for sid, _ in subs:
                     if sid in allowed_for_module:
                         st.session_state["sub_module"] = sid
                         break
                 main = key
 
-    # Botão SAIR
+    # Botão SAIR (sempre na barra)
     with cols[-1]:
         if st.button("⏏ Sair", key="btn_logout_main", use_container_width=True):
             keys = list(st.session_state.keys())
@@ -294,7 +294,7 @@ def render_sub_nav(main_module: str) -> str:
 
 
 # ---------------------------------------------------------
-# USER BADGE
+# USER BADGE (nome do usuário no canto)
 # ---------------------------------------------------------
 def render_user_badge(username: str) -> None:
     st.markdown(
@@ -309,7 +309,7 @@ def render_user_badge(username: str) -> None:
 
 
 # ---------------------------------------------------------
-# ROUTER – CHAMA OS MÓDULOS
+# TELAS PLACEHOLDER
 # ---------------------------------------------------------
 def render_dashboard(username: str) -> None:
     st.header("📊 Dashboard (placeholder)")
@@ -324,17 +324,16 @@ def render_dashboard(username: str) -> None:
     )
 
 
-def render_usuarios_placeholder() -> None:
-    st.header("👥 Cadastro de Usuários (em breve)")
-    st.info("Módulo de usuários ainda não foi implementado.")
-
-
 def render_chamados_placeholder() -> None:
     st.header("📨 Chamados / Suporte (em breve)")
     st.info("Módulo de chamados ainda será desenvolvido.")
 
 
+# ---------------------------------------------------------
+# ROUTER – CHAMA OS MÓDULOS CORRETOS
+# ---------------------------------------------------------
 def route_section(main_module: str, sub_module: str, username: str) -> None:
+    # DASHBOARD
     if main_module == "dashboard":
         if dashboard is not None and hasattr(dashboard, "run"):
             dashboard.run()
@@ -342,6 +341,7 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
             render_dashboard(username)
         return
 
+    # CADASTROS
     if main_module == "cadastros":
         if sub_module in ("clientes", ""):
             if clientes is not None and hasattr(clientes, "run"):
@@ -352,9 +352,10 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
             if usuarios is not None and hasattr(usuarios, "run"):
                 usuarios.run()
             else:
-                render_usuarios_placeholder()
+                st.error("Módulo de usuários não encontrado.")
         return
 
+    # R&S
     if main_module == "rs":
         if sub_module in ("candidatos", ""):
             if candidatos is not None and hasattr(candidatos, "run"):
@@ -378,6 +379,7 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
                 st.error("Módulo de parecer não encontrado.")
         return
 
+    # SISTEMAS
     if main_module == "sistemas":
         if sub_module in ("acessos", ""):
             if acessos is not None and hasattr(acessos, "run"):
@@ -388,6 +390,7 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
             render_chamados_placeholder()
         return
 
+    # FINANCEIRO
     if main_module == "financeiro":
         if financeiro is not None and hasattr(financeiro, "run"):
             financeiro.run()
@@ -395,7 +398,7 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
             st.error("Módulo financeiro não encontrado.")
         return
 
-    # fallback
+    # Fallback
     render_dashboard(username)
 
 
@@ -403,10 +406,10 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
 # MAIN
 # ---------------------------------------------------------
 def main() -> None:
-    # Aplica CSS/tema
+    # Aplica o CSS / tema liquid glass
     inject_global_css()
 
-    # Garante login antes de qualquer coisa
+    # Login (se não logar, a app é interrompida pelo auth)
     username = ensure_login()
 
     # Estado de navegação
@@ -419,7 +422,7 @@ def main() -> None:
     # Conteúdo principal
     route_section(main_module, sub_module, username)
 
-    # Badge com usuário
+    # Badge com usuário logado
     render_user_badge(username)
 
 
