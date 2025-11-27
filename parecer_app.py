@@ -9,15 +9,18 @@ from typing import Optional
 
 import streamlit as st
 
-# Garante que a pasta "modules" seja encontrada
+# Caminhos base
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MOD_DIR = os.path.join(BASE_DIR, "modules")
 if MOD_DIR not in sys.path:
     sys.path.append(MOD_DIR)
 
-from modules import auth  # obrigatório
+# Autenticação
+from modules import auth
+# CSS / tema
+from modules.ui_style import inject_global_css
 
-# Os demais módulos podem ou não existir; tratamos com try/except
+# Módulos funcionais (alguns podem não existir ainda)
 try:
     from modules import dashboard
 except Exception:
@@ -58,7 +61,11 @@ try:
 except Exception:
     financeiro = None
 
-# NOVO: módulo de status do pipeline
+try:
+    from modules import usuarios
+except Exception:
+    usuarios = None
+
 try:
     from modules import status_pipeline
 except Exception:
@@ -76,206 +83,39 @@ st.set_page_config(
 
 
 # ---------------------------------------------------------
-# CSS GLOBAL – TEMA LIQUID GLASS (CLARO)
+# MAPEAMENTO DOS MÓDULOS / SUBMÓDULOS
 # ---------------------------------------------------------
-def inject_global_css() -> None:
-    st.markdown(
-        """
-        <style>
-        /* Fundo geral em gradiente pastel */
-        .stApp {
-            background: radial-gradient(circle at 0% 0%, #e0f7ff 0, #f6e9ff 40%, #fdf2ff 80%);
-            color-scheme: light;
-        }
+SUBMODULES = {
+    "dashboard": [],
+    "cadastros": [
+        ("clientes", "🏢 Clientes"),
+        ("usuarios", "👥 Usuários"),
+        ("status_pipeline", "📌 Status Pipeline"),
+    ],
+    "rs": [
+        ("candidatos", "👤 Candidatos"),
+        ("vagas", "🧩 Vagas"),
+        ("pipeline", "📌 Pipeline"),
+        ("parecer", "📝 Parecer"),
+    ],
+    "sistemas": [
+        ("acessos", "🔑 Acessos"),
+        ("chamados", "📨 Chamados"),
+    ],
+    "financeiro": [
+        ("financeiro", "💰 Financeiro"),
+    ],
+}
 
-        /* Esconde a sidebar padrão */
-        section[data-testid="stSidebar"] {
-            display: none !important;
-        }
 
-        /* Container principal mais amplo */
-        .block-container {
-            padding-top: 1.3rem;
-            padding-left: 2.5rem;
-            padding-right: 2.5rem;
-            max-width: 1400px;
-        }
-
-        /* NAV PRINCIPAL – glass, fixo no topo */
-        .main-nav-wrapper {
-            position: sticky;
-            top: 0.6rem;
-            z-index: 999;
-            padding: 0.5rem 0.75rem 0.7rem 0.75rem;
-            border-radius: 999px;
-            margin-bottom: 0.4rem;
-            background: rgba(255, 255, 255, 0.18);
-            backdrop-filter: blur(22px);
-            -webkit-backdrop-filter: blur(22px);
-            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.25);
-        }
-
-        .main-nav-row {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        /* SUB NAV (abaixo da principal) */
-        .glass-actions-row {
-            margin-top: 0.1rem;
-            margin-bottom: 0.6rem;
-            display: flex;
-            justify-content: flex-start;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-
-        /* Botões GLASS – base (submenus + botões normais) */
-        .stButton>button {
-            border-radius: 999px !important;
-            border: 1px solid rgba(255, 255, 255, 0.8) !important;
-            padding: 0.45rem 1.35rem !important;
-            font-size: 0.92rem !important;
-            font-weight: 600 !important;
-            color: #111827 !important;
-            background: radial-gradient(circle at 0 0,
-                        rgba(255, 255, 255, 0.96),
-                        rgba(228, 241, 255, 0.97)) !important;
-            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.22) !important;
-            transition: transform 0.14s ease-out,
-                        box-shadow 0.14s ease-out,
-                        background 0.14s ease-out,
-                        border-color 0.14s ease-out;
-        }
-
-        .stButton>button:hover {
-            transform: translateY(-1px) scale(1.01);
-            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.30) !important;
-            background: linear-gradient(135deg,
-                        rgba(255, 255, 255, 0.99),
-                        rgba(224, 231, 255, 0.99)) !important;
-        }
-
-        .stButton>button:active {
-            transform: translateY(1px) scale(0.99);
-            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35) !important;
-        }
-
-        /* Botões do MENU PRINCIPAL um pouco menores */
-        .main-nav-wrapper .stButton>button {
-            font-size: 0.86rem !important;
-            padding: 0.35rem 1.0rem !important;
-        }
-
-        /* Botão ativo (nav) – destaque leve rosa */
-        .nav-active>button {
-            border-color: rgba(244, 114, 182, 0.85) !important;
-            box-shadow: 0 18px 40px rgba(236, 72, 153, 0.40) !important;
-        }
-
-        /* Chip de usuário – canto inferior esquerdo */
-        .user-badge {
-            position: fixed;
-            left: 1.2rem;
-            bottom: 1.1rem;
-            z-index: 1000;
-            padding: 0.25rem 0.85rem;
-            border-radius: 999px;
-            background: rgba(15, 23, 42, 0.86);
-            color: #e5e7eb;
-            font-size: 0.80rem;
-            display: flex;
-            align-items: center;
-            gap: 0.35rem;
-            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
-        }
-
-        .user-badge span.emoji {
-            font-size: 1rem;
-        }
-
-        /* Títulos */
-        h1, h2, h3 {
-            color: #0f172a;
-        }
-
-        /* Tabelas HTML glass (usadas em listas customizadas) */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 0.4rem;
-            background: rgba(255, 255, 255, 0.92);
-            border-radius: 22px;
-            overflow: hidden;
-            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.22);
-        }
-
-        thead tr {
-            background: rgba(15, 23, 42, 0.06);
-        }
-
-        th, td {
-            padding: 0.55rem 0.8rem;
-            font-size: 0.85rem;
-            color: #111827;
-            text-align: left;
-        }
-
-        tbody tr:nth-child(even) {
-            background: rgba(255, 255, 255, 0.9);
-        }
-
-        tbody tr:hover {
-            background: rgba(239, 246, 255, 0.98);
-        }
-
-        /* Selectbox / MultiSelect claros */
-        .stSelectbox div[data-baseweb="select"],
-        .stMultiSelect div[data-baseweb="select"] {
-            background: rgba(255, 255, 255, 0.96) !important;
-            border-radius: 16px !important;
-        }
-
-        .stSelectbox div[role="listbox"],
-        .stMultiSelect div[role="listbox"] {
-            background: #f9fafb !important;
-            color: #111827 !important;
-        }
-
-        /* Inputs / textareas claros (principalmente para o Parecer) */
-        textarea,
-        input[type="text"],
-        input[type="number"],
-        input[type="password"],
-        input[type="email"] {
-            background: rgba(255, 255, 255, 0.98) !important;
-            color: #0f172a !important;
-            border-radius: 18px !important;
-            border: 1px solid rgba(148, 163, 184, 0.7) !important;
-        }
-
-        textarea:focus,
-        input[type="text"]:focus,
-        input[type="number"]:focus,
-        input[type="password"]:focus,
-        input[type="email"]:focus {
-            outline: none !important;
-            border-color: rgba(59, 130, 246, 0.9) !important;
-            box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5);
-        }
-
-        /* Labels mais visíveis */
-        label {
-            color: #111827 !important;
-            font-weight: 600 !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+# ---------------------------------------------------------
+# ESTADO DE NAVEGAÇÃO
+# ---------------------------------------------------------
+def init_nav_state() -> None:
+    if "main_module" not in st.session_state:
+        st.session_state["main_module"] = "rs"  # começa em R&S
+    if "sub_module" not in st.session_state:
+        st.session_state["sub_module"] = "candidatos"
 
 
 # ---------------------------------------------------------
@@ -283,13 +123,12 @@ def inject_global_css() -> None:
 # ---------------------------------------------------------
 def ensure_login() -> str:
     """
-    Delega pro modules.auth.run() controlar o fluxo.
-    Se ele quiser segurar na tela de login, ele usa st.stop() lá.
-    Aqui só pegamos o nome do usuário depois.
+    Delegamos a tela de login para modules.auth.run().
+    Se ele quiser segurar na tela de login, usa st.stop() lá.
+    Aqui só recuperamos o usuário logado.
     """
-    possible_username: Optional[str] = None
     try:
-        possible_username = auth.run()
+        possible_username: Optional[str] = auth.run()
     except Exception as e:
         st.error(f"Erro no módulo de autenticação: {e}")
         st.stop()
@@ -306,35 +145,7 @@ def ensure_login() -> str:
 
 
 # ---------------------------------------------------------
-# ESTADO DE NAVEGAÇÃO
-# ---------------------------------------------------------
-SUBMODULES = {
-    "dashboard": [],
-    "cadastros": [
-        ("clientes", "🏢 Clientes"),
-        ("usuarios", "👥 Usuários"),
-        ("status_pipeline", "📌 Status Pipeline"),  # NOVO ITEM AQUI
-    ],
-    "rs": [
-        ("candidatos", "👤 Candidatos"),
-        ("vagas", "🧩 Vagas"),
-        ("pipeline", "📌 Pipeline"),
-        ("parecer", "📝 Parecer"),
-    ],
-    "sistemas": [("acessos", "🔑 Acessos"), ("chamados", "📨 Chamados")],
-    "financeiro": [("financeiro", "💰 Financeiro")],
-}
-
-
-def init_nav_state() -> None:
-    if "main_module" not in st.session_state:
-        st.session_state["main_module"] = "rs"  # começa em R&S
-    if "sub_module" not in st.session_state:
-        st.session_state["sub_module"] = "candidatos"
-
-
-# ---------------------------------------------------------
-# NAV PRINCIPAL (Dashboard, Cadastros, R&S, Sistemas, Financeiro + Sair)
+# NAV PRINCIPAL (Dashboard, Cadastros, R&S, Sistemas, Financeiro, Sair)
 # ---------------------------------------------------------
 def render_main_nav() -> str:
     main = st.session_state.get("main_module", "rs")
@@ -347,8 +158,12 @@ def render_main_nav() -> str:
         ("financeiro", "💰 Financeiro"),
     ]
 
-    st.markdown('<div class="main-nav-wrapper"><div class="main-nav-row">', unsafe_allow_html=True)
-    cols = st.columns(len(items) + 1)  # +1 para o botão Sair
+    st.markdown(
+        '<div class="main-nav-wrapper"><div class="main-nav-row">',
+        unsafe_allow_html=True,
+    )
+
+    cols = st.columns(len(items) + 1)  # +1 para botão Sair
 
     # Botões principais
     for idx, (key, label) in enumerate(items):
@@ -421,7 +236,7 @@ def render_sub_nav(main_module: str) -> str:
 
 
 # ---------------------------------------------------------
-# USER BADGE
+# USER BADGE (canto inferior)
 # ---------------------------------------------------------
 def render_user_badge(username: str) -> None:
     st.markdown(
@@ -436,10 +251,10 @@ def render_user_badge(username: str) -> None:
 
 
 # ---------------------------------------------------------
-# ROUTER – CHAMA OS MÓDULOS
+# PLACEHOLDERS / ROUTER
 # ---------------------------------------------------------
 def render_dashboard(username: str) -> None:
-    st.header("📊 Dashboard (placeholder)")
+    st.header("📊 Dashboard")
     st.write(
         """
         Aqui podemos colocar cards e indicadores:
@@ -462,6 +277,7 @@ def render_chamados_placeholder() -> None:
 
 
 def route_section(main_module: str, sub_module: str, username: str) -> None:
+    # DASHBOARD
     if main_module == "dashboard":
         if dashboard is not None and hasattr(dashboard, "run"):
             dashboard.run()
@@ -469,23 +285,28 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
             render_dashboard(username)
         return
 
+    # CADASTROS
     if main_module == "cadastros":
-        if sub_module == "clientes" or sub_module == "":
+        if sub_module in ("clientes", ""):
             if clientes is not None and hasattr(clientes, "run"):
                 clientes.run()
             else:
                 st.error("Módulo de clientes não encontrado.")
         elif sub_module == "usuarios":
-            render_usuarios_placeholder()
+            if usuarios is not None and hasattr(usuarios, "run"):
+                usuarios.run()
+            else:
+                render_usuarios_placeholder()
         elif sub_module == "status_pipeline":
             if status_pipeline is not None and hasattr(status_pipeline, "run"):
                 status_pipeline.run()
             else:
-                st.error("Módulo de Status do Pipeline não encontrado.")
+                st.error("Módulo de status do pipeline não encontrado.")
         return
 
+    # R&S
     if main_module == "rs":
-        if sub_module == "candidatos" or sub_module == "":
+        if sub_module in ("candidatos", ""):
             if candidatos is not None and hasattr(candidatos, "run"):
                 candidatos.run()
             else:
@@ -507,8 +328,9 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
                 st.error("Módulo de parecer não encontrado.")
         return
 
+    # SISTEMAS
     if main_module == "sistemas":
-        if sub_module == "acessos" or sub_module == "":
+        if sub_module in ("acessos", ""):
             if acessos is not None and hasattr(acessos, "run"):
                 acessos.run()
             else:
@@ -517,6 +339,7 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
             render_chamados_placeholder()
         return
 
+    # FINANCEIRO
     if main_module == "financeiro":
         if financeiro is not None and hasattr(financeiro, "run"):
             financeiro.run()
@@ -524,7 +347,7 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
             st.error("Módulo financeiro não encontrado.")
         return
 
-    # fallback
+    # Fallback
     render_dashboard(username)
 
 
@@ -532,20 +355,28 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
 # MAIN
 # ---------------------------------------------------------
 def main() -> None:
+    # CSS global
     inject_global_css()
+
+    # Login
     username = ensure_login()
+
+    # Estado de navegação
     init_nav_state()
 
+    # Navegação
     main_module = render_main_nav()
     sub_module = render_sub_nav(main_module)
 
+    # Conteúdo
     route_section(main_module, sub_module, username)
+
+    # Badge de usuário
     render_user_badge(username)
 
 
 if __name__ == "__main__":
     main()
-
 
 
 
