@@ -17,7 +17,7 @@ if MOD_DIR not in sys.path:
 
 # Autenticação
 from modules import auth
-# CSS / tema
+# CSS / tema (arquivo ui_style.py dentro de modules)
 from modules.ui_style import inject_global_css
 
 # Módulos funcionais (alguns podem não existir ainda)
