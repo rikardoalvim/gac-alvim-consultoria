@@ -9,6 +9,10 @@ from typing import Optional
 
 import streamlit as st
 
+from modules.database import init_db
+
+init_db()
+
 # Caminhos base
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MOD_DIR = os.path.join(BASE_DIR, "modules")
