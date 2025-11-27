@@ -1,24 +1,27 @@
-# modules/ui_style.py
-
 import streamlit as st
 
 
 def inject_global_css() -> None:
+    """
+    CSS global da aplicação no estilo iOS / liquid glass.
+    Aqui ficam APENAS regras visuais.
+    """
     st.markdown(
         """
         <style>
-        /* Fundo geral em gradiente pastel */
+        /* ===========================
+           FUNDO E CONTAINER GERAL
+        ============================*/
         .stApp {
             background: radial-gradient(circle at 0% 0%, #e0f7ff 0, #f6e9ff 40%, #fdf2ff 80%);
             color-scheme: light;
+            color: #111827;
         }
 
-        /* Esconde a sidebar padrão */
         section[data-testid="stSidebar"] {
             display: none !important;
         }
 
-        /* Container principal mais amplo */
         .block-container {
             padding-top: 1.3rem;
             padding-left: 2.5rem;
@@ -26,7 +29,9 @@ def inject_global_css() -> None:
             max-width: 1400px;
         }
 
-        /* NAV PRINCIPAL – glass, fixo no topo */
+        /* ===========================
+           NAV PRINCIPAL (TOPO)
+        ============================*/
         .main-nav-wrapper {
             position: sticky;
             top: 0.6rem;
@@ -48,7 +53,9 @@ def inject_global_css() -> None:
             flex-wrap: wrap;
         }
 
-        /* SUB NAV (abaixo da principal) */
+        /* ===========================
+           SUB NAV (LINHA ABAIXO)
+        ============================*/
         .glass-actions-row {
             margin-top: 0.1rem;
             margin-bottom: 0.6rem;
@@ -58,7 +65,9 @@ def inject_global_css() -> None:
             gap: 0.5rem;
         }
 
-        /* Botões GLASS – base (submenus + botões normais) */
+        /* ===========================
+           BOTÕES (TODOS)
+        ============================*/
         .stButton>button {
             border-radius: 999px !important;
             border: 1px solid rgba(255, 255, 255, 0.8) !important;
@@ -89,19 +98,21 @@ def inject_global_css() -> None:
             box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35) !important;
         }
 
-        /* Botões do MENU PRINCIPAL um pouco menores */
+        /* NAV PRINCIPAL – botões um pouco menores */
         .main-nav-wrapper .stButton>button {
             font-size: 0.86rem !important;
             padding: 0.35rem 1.0rem !important;
         }
 
-        /* Botão ativo (nav) – destaque leve rosa */
+        /* Botão ativo (nav / subnav) */
         .nav-active>button {
             border-color: rgba(244, 114, 182, 0.85) !important;
             box-shadow: 0 18px 40px rgba(236, 72, 153, 0.40) !important;
         }
 
-        /* Chip de usuário – canto inferior esquerdo */
+        /* ===========================
+           CHIP DO USUÁRIO (CANTO INFERIOR)
+        ============================*/
         .user-badge {
             position: fixed;
             left: 1.2rem;
@@ -122,12 +133,20 @@ def inject_global_css() -> None:
             font-size: 1rem;
         }
 
-        /* Títulos */
+        /* ===========================
+           TÍTULOS E TEXTOS
+        ============================*/
         h1, h2, h3 {
-            color: #0f172a;
+            color: #4b5563 !important;  /* cinza elegante */
         }
 
-        /* Tabelas HTML glass (usadas em listas customizadas) */
+        h4, h5, h6, p, span, div {
+            color: #111827;
+        }
+
+        /* ===========================
+           TABELAS HTML (LISTAS CUSTOM)
+        ============================*/
         table {
             width: 100%;
             border-collapse: collapse;
@@ -157,7 +176,9 @@ def inject_global_css() -> None:
             background: rgba(239, 246, 255, 0.98);
         }
 
-        /* Selectbox / MultiSelect claros */
+        /* ===========================
+           SELECTBOX / MULTISELECT
+        ============================*/
         .stSelectbox div[data-baseweb="select"],
         .stMultiSelect div[data-baseweb="select"] {
             background: rgba(255, 255, 255, 0.96) !important;
@@ -170,7 +191,9 @@ def inject_global_css() -> None:
             color: #111827 !important;
         }
 
-        /* Inputs / textareas claros (principalmente para o Parecer) */
+        /* ===========================
+           CAMPOS DE TEXTO / TEXTAREA
+        ============================*/
         textarea,
         input[type="text"],
         input[type="number"],
@@ -194,38 +217,14 @@ def inject_global_css() -> None:
 
         /* Labels mais visíveis */
         label {
-            color: #111827 !important;
+            color: #4b5563 !important;  /* cinza nos rótulos */
             font-weight: 600 !important;
         }
-
-        /* ===============================
-           AJUSTE DE COR DOS TEXTOS (CINZA ELEGANTE)
-        ================================ */
-
-        /* Texto geral da app */
-        html, body, [class*="css"] {
-            color: #111827;
-            font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-        }
-
-        /* Títulos (reforço) */
-        h1, h2, h3, h4, h5, h6 {
-            color: #111827 !important;
-        }
-
-        /* Labels e textos padrão (inputs, selects, etc.) */
-        .stMarkdown, .stText, .stRadio label, .stCheckbox label,
-        .stSelectbox label, .stMultiSelect label, .stDateInput label,
-        .stFileUploader label, label {
-            color: #111827 !important;
-        }
-
-        /* Placeholders um pouco mais escuros (cinza médio) */
-        ::placeholder {
-            color: #6B7280 !important;
-            opacity: 1;
-        }
         </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
         """,
         unsafe_allow_html=True,
     )
