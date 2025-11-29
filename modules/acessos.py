@@ -1,459 +1,231 @@
-from datetime import datetime
-import pandas as pd
+from datetime import date
+
 import pandas as pd
 import streamlit as st
 
-from .core import (
-    carregar_acessos,
-    registrar_acesso,
-    LOG_ACESSOS,
-    carregar_clientes,
-)
-
-def render_tabela_html(df, columns, headers):
-    """Renderiza DataFrame como tabela HTML no estilo glass (usa CSS global)."""
-    if df.empty:
-        st.info("Nenhum acesso cadastrado ainda.")
-        return
-
-    html = ["<table>"]
-    # Cabeçalho
-    html.append("<thead><tr>")
-    for h in headers:
-        html.append(f"<th>{h}</th>")
-    html.append("</tr></thead>")
-
-    # Corpo
-    html.append("<tbody>")
-    for _, row in df[columns].iterrows():
-        html.append("<tr>")
-        for col in columns:
-            valor = row[col]
-            html.append(f"<td>{valor}</td>")
-        html.append("</tr>")
-    html.append("</tbody></table>")
-
-    st.markdown("".join(html), unsafe_allow_html=True)
+from .database import (
+    listar_clientes,
+    listar_candidatos,
+    listar_acessos,
+    obter_acesso,
+    inserir_acesso,
+    atualizar_acesso,
 )
 
 
 def render_tabela_html(df, columns, headers):
-    """Renderiza DataFrame como tabela HTML no estilo glass (usa CSS global)."""
     if df.empty:
-        st.info("Nenhum acesso cadastrado ainda.")
+        st.info("Nenhum registro encontrado.")
         return
 
     html = ["<table>"]
-    # Cabeçalho
     html.append("<thead><tr>")
     for h in headers:
         html.append(f"<th>{h}</th>")
-    html.append("</tr></thead>")
+    html.append("</tr></thead><tbody>")
 
-    # Corpo
-    html.append("<tbody>")
     for _, row in df[columns].iterrows():
         html.append("<tr>")
         for col in columns:
-            valor = row[col]
-            html.append(f"<td>{valor}</td>")
+            html.append(f"<td>{row[col]}</td>")
         html.append("</tr>")
-    html.append("</tbody></table>")
 
+    html.append("</tbody></table>")
     st.markdown("".join(html), unsafe_allow_html=True)
 
 
 def run():
-    st.header("🔐 Gerenciador de Acessos")
-    st.header("🔐 Gerenciador de Acessos")
+    st.header("🔑 Acessos a Sistemas")
 
-    # ==============================
-    # Carrega dados base
-    # ==============================
-    # ==============================
-    # Carrega dados base
-    # ==============================
-    df_cli = carregar_clientes()
-    df_acessos = carregar_acessos()
+    if "acesso_edit_id" not in st.session_state:
+        st.session_state["acesso_edit_id"] = None
 
-    # Garante colunas básicas em df_acessos
-    if not df_acessos.empty:
-        df_acessos = df_acessos.copy()
-        for col in ["id_acesso", "id_cliente", "nome_cliente", "nome_usuario", "observacoes"]:
-            if col not in df_acessos.columns:
-                df_acessos[col] = ""
-        # Muito importante: id_cliente como string para comparação
-        df_acessos["id_cliente"] = df_acessos["id_cliente"].astype(str)
-    else:
-        df_acessos = pd.DataFrame(columns=["id_acesso", "id_cliente", "nome_cliente", "nome_usuario", "observacoes"])
+    colL, colR = st.columns([1.1, 1.4])
 
-    # ==============================
-    # FORMULÁRIO: CLIENTE + BLOCÃO
-    # ==============================
-    st.subheader("➕ Cadastro / edição de acesso")
+    # =========================
+    # Lado esquerdo: lista
+    # =========================
+    with colL:
+        st.subheader("Registros de acesso")
 
-    nome_cliente = ""
-    id_cliente = ""
-    existing_row = None  # acesso já existente para o cliente
-    df_acessos = carregar_acessos()
+        dados = listar_acessos()
+        if dados:
+            df = pd.DataFrame(dados).fillna("")
+            render_tabela_html(
+                df,
+                columns=["id_acesso", "nome_cliente", "nome_usuario", "sistema", "status"],
+                headers=["ID", "Cliente", "Usuário", "Sistema", "Status"],
+            )
 
-    # Garante colunas básicas em df_acessos
-    if not df_acessos.empty:
-        df_acessos = df_acessos.copy()
-        for col in ["id_acesso", "id_cliente", "nome_cliente", "nome_usuario", "observacoes"]:
-            if col not in df_acessos.columns:
-                df_acessos[col] = ""
-        # Muito importante: id_cliente como string para comparação
-        df_acessos["id_cliente"] = df_acessos["id_cliente"].astype(str)
-    else:
-        df_acessos = pd.DataFrame(columns=["id_acesso", "id_cliente", "nome_cliente", "nome_usuario", "observacoes"])
-
-    # ==============================
-    # FORMULÁRIO: CLIENTE + BLOCÃO
-    # ==============================
-    st.subheader("➕ Cadastro / edição de acesso")
-
-    nome_cliente = ""
-    id_cliente = ""
-    existing_row = None  # acesso já existente para o cliente
-
-    col1, col2 = st.columns(2)
-
-
-    with col1:
-        if df_cli.empty:
-            st.info("Nenhum cliente cadastrado. Informe o nome manualmente.")
-            nome_cliente = st.text_input("Cliente / Empresa")
-            st.info("Nenhum cliente cadastrado. Informe o nome manualmente.")
-            nome_cliente = st.text_input("Cliente / Empresa")
+            st.markdown("---")
+            ids = [int(r["id_acesso"]) for r in dados]
+            labels = {
+                int(r["id_acesso"]): f"{r['id_acesso']} - {r.get('nome_cliente','')} ({r.get('sistema','')})"
+                for r in dados
+            }
+            id_sel = st.selectbox(
+                "Carregar acesso existente:",
+                ["(Novo)"] + ids,
+                format_func=lambda x: labels.get(x, "(Novo)") if x != "(Novo)" else "(Novo)",
+                key="acesso_sel",
+            )
+            if id_sel != "(Novo)":
+                st.session_state["acesso_edit_id"] = int(id_sel)
+            else:
+                st.session_state["acesso_edit_id"] = None
         else:
-            # Mapa id_cliente -> nome
-            opcoes_cli = {}
-            for _, row in df_cli.iterrows():
-                opcoes_cli[str(row["id_cliente"])] = row["nome_cliente"]
+            st.info("Nenhum acesso cadastrado ainda.")
+            st.session_state["acesso_edit_id"] = None
 
-            # Select de cliente
-            # Mapa id_cliente -> nome
-            opcoes_cli = {}
-            for _, row in df_cli.iterrows():
-                opcoes_cli[str(row["id_cliente"])] = row["nome_cliente"]
+    # =========================
+    # Lado direito: formulário
+    # =========================
+    with colR:
+        st.subheader("Cadastro / edição de acesso")
 
-            # Select de cliente
-            id_cli_sel = st.selectbox(
-                "Cliente",
-                options=list(opcoes_cli.keys()) + ["(Manual)"],
-                format_func=lambda x: opcoes_cli[x] if x in opcoes_cli else "Outro (manual)",
-                key="acess_cli_sel",
-            )
+        clientes = listar_clientes()
+        candidatos = listar_candidatos()
 
-            if id_cli_sel in opcoes_cli:
-                "Cliente",
-                options=list(opcoes_cli.keys()) + ["(Manual)"],
-                format_func=lambda x: opcoes_cli[x] if x in opcoes_cli else "Outro (manual)",
-                key="acess_cli_sel",
-            )
-
-            if id_cli_sel in opcoes_cli:
-                id_cliente = str(id_cli_sel)
-                nome_cliente = opcoes_cli[id_cli_sel]
-
-                # Se já existe acesso para esse cliente, carrega o último
-                df_cli_acessos = df_acessos[df_acessos["id_cliente"] == id_cliente]
-                if not df_cli_acessos.empty:
-                    # pega o último registro desse cliente
-                    existing_row = df_cli_acessos.iloc[-1]
-                nome_cliente = opcoes_cli[id_cli_sel]
-
-                # Se já existe acesso para esse cliente, carrega o último
-                df_cli_acessos = df_acessos[df_acessos["id_cliente"] == id_cliente]
-                if not df_cli_acessos.empty:
-                    # pega o último registro desse cliente
-                    existing_row = df_cli_acessos.iloc[-1]
-            else:
-                # opção manual
-                nome_cliente = st.text_input("Cliente / Empresa (manual)")
-                id_cliente = ""
-                # opção manual
-                nome_cliente = st.text_input("Cliente / Empresa (manual)")
-                id_cliente = ""
-
-    with col2:
-        nome_usuario_val = ""
-        if existing_row is not None and "nome_usuario" in existing_row.index:
-            nome_usuario_val = str(existing_row["nome_usuario"])
-
-        nome_usuario = st.text_input(
-            "Usuário / Responsável (opcional)",
-            placeholder="Ex.: Rikardo, Stephanie, time financeiro...",
-            value=nome_usuario_val,
-            key="acess_nome_usuario",
+        df_cli = pd.DataFrame(clientes).fillna("") if clientes else pd.DataFrame(columns=["id_cliente", "nome_cliente"])
+        df_cand = pd.DataFrame(candidatos).fillna("") if candidatos else pd.DataFrame(
+            columns=["id_candidato", "nome"]
         )
 
-    # ------------------------------
-    # Controle de estado do blocão
-    # ------------------------------
-    # Identificador único do "cliente atual" para comparação
-    if id_cliente:
-        current_client_key = f"cli_{id_cliente}"
-    else:
-        # para manual, usamos o texto do nome_cliente como chave
-        current_client_key = f"manual_{nome_cliente.strip()}" if nome_cliente.strip() else "manual_vazio"
+        op_cli = {int(r["id_cliente"]): r["nome_cliente"] for _, r in df_cli.iterrows()} if not df_cli.empty else {}
+        op_cand = {int(r["id_candidato"]): r["nome"] for _, r in df_cand.iterrows()} if not df_cand.empty else {}
 
-    # Texto inicial vindo do registro existente (se houver)
-    texto_inicial = ""
-    if existing_row is not None and "observacoes" in existing_row.index:
-        texto_inicial = str(existing_row["observacoes"])
+        registro = None
+        if st.session_state["acesso_edit_id"]:
+            registro = obter_acesso(st.session_state["acesso_edit_id"])
 
-    # Se trocou de cliente em relação ao último render, atualiza o texto no session_state
-    prev_client_key = st.session_state.get("acess_cli_current", None)
-    if prev_client_key != current_client_key:
-        # Troca de cliente → atualiza o blocão com o texto daquele cliente
-        st.session_state["acess_blocao"] = texto_inicial
-        st.session_state["acess_cli_current"] = current_client_key
+        # valores iniciais
+        id_cliente_ini = None
+        id_candidato_ini = None
+        nome_cliente_ini = ""
+        nome_usuario_ini = ""
+        sistema_ini = "Senior"
+        tipo_ini = ""
+        status_ini = "Ativo"
+        data_ini_ini = date.today()
+        data_fim_ini = None
+        obs_ini = ""
 
-    # Agora desenha o blocão usando o valor do session_state
-    observacoes = st.text_area(
-        "Bloco de notas de acessos (URLs, logins, senhas, observações)",
-        height=380,
-        value=st.session_state.get("acess_blocao", texto_inicial),
-        key="acess_blocao",
-    )
+        if registro:
+            id_cliente_ini = registro.get("id_cliente")
+            id_candidato_ini = registro.get("id_candidato")
+            nome_cliente_ini = registro.get("nome_cliente", "")
+            nome_usuario_ini = registro.get("nome_usuario", "")
+            sistema_ini = registro.get("sistema", "") or "Senior"
+            tipo_ini = registro.get("tipo_acesso", "") or ""
+            status_ini = registro.get("status", "") or "Ativo"
+            try:
+                if registro.get("data_inicio"):
+                    data_ini_ini = date.fromisoformat(registro["data_inicio"])
+            except Exception:
+                data_ini_ini = date.today()
+            try:
+                if registro.get("data_fim"):
+                    data_fim_ini = date.fromisoformat(registro["data_fim"])
+            except Exception:
+                data_fim_ini = None
+            obs_ini = registro.get("observacoes", "")
 
-    colb1, colb2 = st.columns([1, 1])
-    with colb1:
-        if st.button("💾 Salvar acesso", use_container_width=True, key="btn_salvar_acesso"):
-            if not nome_cliente.strip() and not observacoes.strip():
-                st.error("Informe ao menos o cliente/empresa ou o bloco de notas.")
+        # Cliente
+        col1, col2 = st.columns(2)
+        with col1:
+            if op_cli:
+                id_cliente_sel = st.selectbox(
+                    "Cliente",
+                    list(op_cli.keys()),
+                    index=list(op_cli.keys()).index(int(id_cliente_ini))
+                    if id_cliente_ini in op_cli
+                    else 0,
+                    format_func=lambda x: op_cli[x],
+                )
+                nome_cliente_sel = op_cli[id_cliente_sel]
             else:
-                try:
-                    # Se já havia um registro de acesso para esse cliente, atualiza
-                    if existing_row is not None and "id_acesso" in existing_row.index and str(existing_row["id_acesso"]):
-                        df_total = carregar_acessos()
-                        if df_total.empty:
-                            df_total = pd.DataFrame(columns=df_acessos.columns)
+                id_cliente_sel = None
+                nome_cliente_sel = st.text_input("Cliente (texto livre)", value=nome_cliente_ini)
 
-                        df_total = df_total.copy()
-                        if "id_acesso" not in df_total.columns:
-                            df_total["id_acesso"] = ""
-                        if "id_cliente" not in df_total.columns:
-                            df_total["id_cliente"] = ""
-                        df_total["id_cliente"] = df_total["id_cliente"].astype(str)
+        with col2:
+            if op_cand:
+                id_cand_sel = st.selectbox(
+                    "Candidato / usuário (opcional)",
+                    ["(Nenhum)"] + list(op_cand.keys()),
+                    index=(
+                        ["(Nenhum)"] + list(op_cand.keys())
+                    ).index(id_candidato_ini)
+                    if id_candidato_ini in op_cand
+                    else 0,
+                    format_func=lambda x: op_cand.get(x, "(Nenhum)") if x != "(Nenhum)" else "(Nenhum)",
+                )
+                if id_cand_sel == "(Nenhum)":
+                    id_cand_sel = None
+            else:
+                id_cand_sel = None
 
-                        mask = df_total["id_acesso"] == str(existing_row["id_acesso"])
+        nome_usuario = st.text_input("Nome do usuário / login", value=nome_usuario_ini)
+        sistema = st.text_input("Sistema (ex.: Senior, TOTVS, VPN)", value=sistema_ini)
+        tipo_acesso = st.text_input("Tipo de acesso (ex.: Admin, Consulta)", value=tipo_ini)
 
-                        if not mask.any():
-                            st.error("Registro de acesso não encontrado para atualização.")
-                        else:
-                            df_total.loc[mask, "nome_cliente"] = nome_cliente.strip()
-                            df_total.loc[mask, "id_cliente"] = id_cliente
-                            df_total.loc[mask, "nome_usuario"] = nome_usuario.strip() or nome_cliente.strip()
-                            df_total.loc[mask, "observacoes"] = observacoes.strip()
-                            # Mantém demais campos (sistema, tipo_acesso, datas, status) como estão
-                            df_total.to_csv(LOG_ACESSOS, sep=";", index=False, encoding="utf-8")
-                            st.success("Acesso atualizado com sucesso!")
-                    else:
-                        # Não havia ainda um acesso para esse cliente -> cria novo
-                        hoje = datetime.today().strftime("%Y-%m-%d")
-                        novo_id = registrar_acesso(
-                            id_cliente=id_cliente,
-                            nome_cliente=nome_cliente.strip(),
-                            id_candidato="",
-                            nome_usuario=nome_usuario.strip() or nome_cliente.strip(),
-                            sistema="Geral",
-                            tipo_acesso="Usuário",
-                            data_inicio=hoje,
-                            data_fim="",
-                            status="Ativo",
-                            observacoes=observacoes.strip(),
-                        )
-                        st.success(f"Acesso registrado com ID {novo_id}.")
-                except Exception as e:
-                    st.error(f"Erro ao salvar acesso: {e}")
+        colD1, colD2, colD3 = st.columns(3)
+        with colD1:
+            data_inicio = st.date_input("Data início", value=data_ini_ini)
+        with colD2:
+            data_fim = st.date_input("Data fim (opcional)", value=data_fim_ini) if data_fim_ini else st.date_input(
+                "Data fim (opcional)", value=None
+            )
+        with colD3:
+            status = st.selectbox("Status", ["Ativo", "Inativo", "Revogado"], index=["Ativo", "Inativo", "Revogado"].index(status_ini) if status_ini in ["Ativo", "Inativo", "Revogado"] else 0)
 
-    with colb2:
-        if st.button("🧹 Limpar formulário", use_container_width=True, key="btn_limpar_acesso"):
-            for k in ["acess_cli_sel", "acess_blocao", "acess_cli_current", "acess_nome_usuario"]:
-                if k in st.session_state:
-                    del st.session_state[k]
-            st.experimental_rerun()
-        nome_usuario_val = ""
-        if existing_row is not None and "nome_usuario" in existing_row.index:
-            nome_usuario_val = str(existing_row["nome_usuario"])
-
-        nome_usuario = st.text_input(
-            "Usuário / Responsável (opcional)",
-            placeholder="Ex.: Rikardo, Stephanie, time financeiro...",
-            value=nome_usuario_val,
-            key="acess_nome_usuario",
+        st.markdown("**Detalhes / acessos (blocão):**")
+        observacoes = st.text_area(
+            "",
+            height=260,
+            value=obs_ini,
+            placeholder="Cole aqui os acessos, URLs, login/senha (se for ambiente controlado), observações etc.",
         )
 
-    # ------------------------------
-    # Controle de estado do blocão
-    # ------------------------------
-    # Identificador único do "cliente atual" para comparação
-    if id_cliente:
-        current_client_key = f"cli_{id_cliente}"
-    else:
-        # para manual, usamos o texto do nome_cliente como chave
-        current_client_key = f"manual_{nome_cliente.strip()}" if nome_cliente.strip() else "manual_vazio"
+        colB1, colB2 = st.columns(2)
+        with colB1:
+            if st.button("🆕 Novo registro", use_container_width=True):
+                st.session_state["acesso_edit_id"] = None
+                st.experimental_rerun()
 
-    # Texto inicial vindo do registro existente (se houver)
-    texto_inicial = ""
-    if existing_row is not None and "observacoes" in existing_row.index:
-        texto_inicial = str(existing_row["observacoes"])
+        with colB2:
+            if st.button("💾 Salvar", use_container_width=True):
+                data_inicio_str = data_inicio.isoformat() if data_inicio else None
+                data_fim_str = data_fim.isoformat() if isinstance(data_fim, date) else None
 
-    # Se trocou de cliente em relação ao último render, atualiza o texto no session_state
-    prev_client_key = st.session_state.get("acess_cli_current", None)
-    if prev_client_key != current_client_key:
-        # Troca de cliente → atualiza o blocão com o texto daquele cliente
-        st.session_state["acess_blocao"] = texto_inicial
-        st.session_state["acess_cli_current"] = current_client_key
+                if st.session_state["acesso_edit_id"]:
+                    atualizar_acesso(
+                        id_acesso=int(st.session_state["acesso_edit_id"]),
+                        id_cliente=int(id_cliente_sel) if id_cliente_sel else None,
+                        nome_cliente=nome_cliente_sel,
+                        id_candidato=int(id_cand_sel) if id_cand_sel else None,
+                        nome_usuario=nome_usuario,
+                        sistema=sistema,
+                        tipo_acesso=tipo_acesso,
+                        data_inicio=data_inicio_str,
+                        data_fim=data_fim_str,
+                        status=status,
+                        observacoes=observacoes,
+                    )
+                    st.success("Acesso atualizado com sucesso.")
+                else:
+                    novo_id = inserir_acesso(
+                        id_cliente=int(id_cliente_sel) if id_cliente_sel else None,
+                        nome_cliente=nome_cliente_sel,
+                        id_candidato=int(id_cand_sel) if id_cand_sel else None,
+                        nome_usuario=nome_usuario,
+                        sistema=sistema,
+                        tipo_acesso=tipo_acesso,
+                        data_inicio=data_inicio_str,
+                        data_fim=data_fim_str,
+                        status=status,
+                        observacoes=observacoes,
+                    )
+                    st.success(f"Acesso cadastrado (ID {novo_id}).")
+                    st.session_state["acesso_edit_id"] = novo_id
 
-    # Agora desenha o blocão usando o valor do session_state
-    observacoes = st.text_area(
-        "Bloco de notas de acessos (URLs, logins, senhas, observações)",
-        height=380,
-        value=st.session_state.get("acess_blocao", texto_inicial),
-        key="acess_blocao",
-    )
-
-    colb1, colb2 = st.columns([1, 1])
-    with colb1:
-        if st.button("💾 Salvar acesso", use_container_width=True, key="btn_salvar_acesso"):
-            if not nome_cliente.strip() and not observacoes.strip():
-                st.error("Informe ao menos o cliente/empresa ou o bloco de notas.")
-            else:
-                try:
-                    # Se já havia um registro de acesso para esse cliente, atualiza
-                    if existing_row is not None and "id_acesso" in existing_row.index and str(existing_row["id_acesso"]):
-                        df_total = carregar_acessos()
-                        if df_total.empty:
-                            df_total = pd.DataFrame(columns=df_acessos.columns)
-
-                        df_total = df_total.copy()
-                        if "id_acesso" not in df_total.columns:
-                            df_total["id_acesso"] = ""
-                        if "id_cliente" not in df_total.columns:
-                            df_total["id_cliente"] = ""
-                        df_total["id_cliente"] = df_total["id_cliente"].astype(str)
-
-                        mask = df_total["id_acesso"] == str(existing_row["id_acesso"])
-
-                        if not mask.any():
-                            st.error("Registro de acesso não encontrado para atualização.")
-                        else:
-                            df_total.loc[mask, "nome_cliente"] = nome_cliente.strip()
-                            df_total.loc[mask, "id_cliente"] = id_cliente
-                            df_total.loc[mask, "nome_usuario"] = nome_usuario.strip() or nome_cliente.strip()
-                            df_total.loc[mask, "observacoes"] = observacoes.strip()
-                            # Mantém demais campos (sistema, tipo_acesso, datas, status) como estão
-                            df_total.to_csv(LOG_ACESSOS, sep=";", index=False, encoding="utf-8")
-                            st.success("Acesso atualizado com sucesso!")
-                    else:
-                        # Não havia ainda um acesso para esse cliente -> cria novo
-                        hoje = datetime.today().strftime("%Y-%m-%d")
-                        novo_id = registrar_acesso(
-                            id_cliente=id_cliente,
-                            nome_cliente=nome_cliente.strip(),
-                            id_candidato="",
-                            nome_usuario=nome_usuario.strip() or nome_cliente.strip(),
-                            sistema="Geral",
-                            tipo_acesso="Usuário",
-                            data_inicio=hoje,
-                            data_fim="",
-                            status="Ativo",
-                            observacoes=observacoes.strip(),
-                        )
-                        st.success(f"Acesso registrado com ID {novo_id}.")
-                except Exception as e:
-                    st.error(f"Erro ao salvar acesso: {e}")
-
-    with colb2:
-        if st.button("🧹 Limpar formulário", use_container_width=True, key="btn_limpar_acesso"):
-            for k in ["acess_cli_sel", "acess_blocao", "acess_cli_current", "acess_nome_usuario"]:
-                if k in st.session_state:
-                    del st.session_state[k]
-            st.experimental_rerun()
-
-    st.markdown("---")
-
-    # ==============================
-    # LISTA DE ACESSOS (RESUMO)
-    # ==============================
-    st.subheader("📋 Acessos cadastrados (resumo)")
-
-    # ==============================
-    # LISTA DE ACESSOS (RESUMO)
-    # ==============================
-    st.subheader("📋 Acessos cadastrados (resumo)")
-
-    df = carregar_acessos()
-    if df.empty:
-        st.info("Nenhum acesso registrado ainda.")
-        st.info("Nenhum acesso registrado ainda.")
-        return
-
-    df_view = df.copy().fillna("")
-
-    # Filtro por cliente / texto
-    filtro_cli = st.text_input(
-        "Filtrar por cliente ou texto (contém)",
-        key="acess_filtro_cli",
-        placeholder="Digite parte do nome do cliente ou palavra chave...",
-    )
-
-    if filtro_cli.strip():
-        low = filtro_cli.strip().lower()
-        df_view = df_view[
-            df_view.get("nome_cliente", "").astype(str).str.lower().str.contains(low)
-            | df_view.get("observacoes", "").astype(str).str.lower().str.contains(low)
-        ]
-
-    if df_view.empty:
-        st.info("Nenhum acesso encontrado com esse filtro.")
-        return
-
-    # Garante colunas
-    for col in ["id_acesso", "nome_cliente", "nome_usuario", "observacoes"]:
-        if col not in df_view.columns:
-            df_view[col] = ""
-
-    df_view["observ_preview"] = df_view["observacoes"].astype(str).str.slice(0, 140) + "..."
-
-    df_view = df_view.astype(str)
-
-    render_tabela_html(
-    df_view = df.copy().fillna("")
-
-    # Filtro por cliente / texto
-    filtro_cli = st.text_input(
-        "Filtrar por cliente ou texto (contém)",
-        key="acess_filtro_cli",
-        placeholder="Digite parte do nome do cliente ou palavra chave...",
-    )
-
-    if filtro_cli.strip():
-        low = filtro_cli.strip().lower()
-        df_view = df_view[
-            df_view.get("nome_cliente", "").astype(str).str.lower().str.contains(low)
-            | df_view.get("observacoes", "").astype(str).str.lower().str.contains(low)
-        ]
-
-    if df_view.empty:
-        st.info("Nenhum acesso encontrado com esse filtro.")
-        return
-
-    # Garante colunas
-    for col in ["id_acesso", "nome_cliente", "nome_usuario", "observacoes"]:
-        if col not in df_view.columns:
-            df_view[col] = ""
-
-    df_view["observ_preview"] = df_view["observacoes"].astype(str).str.slice(0, 140) + "..."
-
-    df_view = df_view.astype(str)
-
-    render_tabela_html(
-        df_view,
-        columns=["id_acesso", "nome_cliente", "nome_usuario", "observ_preview"],
-        headers=["ID", "Cliente", "Usuário", "Resumo do bloco de notas"],
-    )
+                st.experimental_rerun()

@@ -48,7 +48,7 @@ def init_db():
             email           TEXT,
             linkedin        TEXT,
             pretensao       TEXT,
-            caminho_cv      TEXT,       -- aqui você guarda o caminho do PDF do CV
+            caminho_cv      TEXT,
             created_at      TEXT DEFAULT (datetime('now'))
         );
 
@@ -99,12 +99,29 @@ def init_db():
             resumo_profissional TEXT,
             analise_perfil      TEXT,
             conclusao_texto     TEXT,
-            formato             TEXT,   -- PDF / DOCX
-            caminho_arquivo     TEXT,   -- caminho do parecer salvo
+            formato             TEXT,
+            caminho_arquivo     TEXT,
             status_etapa        TEXT,
             status_contratacao  TEXT,
             motivo_decline      TEXT,
             FOREIGN KEY(id_vaga) REFERENCES vagas(id_vaga),
+            FOREIGN KEY(id_candidato) REFERENCES candidatos(id_candidato)
+        );
+
+        -- Acessos (Sistemas)
+        CREATE TABLE IF NOT EXISTS acessos (
+            id_acesso      INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_cliente     INTEGER,
+            nome_cliente   TEXT,
+            id_candidato   INTEGER,
+            nome_usuario   TEXT,
+            sistema        TEXT,
+            tipo_acesso    TEXT,
+            data_inicio    TEXT,
+            data_fim       TEXT,
+            status         TEXT,
+            observacoes    TEXT,
+            FOREIGN KEY(id_cliente) REFERENCES clientes(id_cliente),
             FOREIGN KEY(id_candidato) REFERENCES candidatos(id_candidato)
         );
         """
@@ -152,6 +169,41 @@ def listar_candidatos(order_by: str = "id_candidato"):
     return [dict(r) for r in rows]
 
 
+def obter_candidato(id_candidato: int):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM candidatos WHERE id_candidato = ?;", (id_candidato,))
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def atualizar_candidato(
+    id_candidato: int,
+    nome: str,
+    idade=None,
+    cidade=None,
+    telefone=None,
+    email=None,
+    linkedin=None,
+    pretensao=None,
+    caminho_cv=None,
+):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE candidatos
+        SET nome = ?, idade = ?, cidade = ?, telefone = ?, email = ?,
+            linkedin = ?, pretensao = ?, caminho_cv = ?
+        WHERE id_candidato = ?
+        """,
+        (nome, idade, cidade, telefone, email, linkedin, pretensao, caminho_cv, id_candidato),
+    )
+    conn.commit()
+    conn.close()
+
+
 def buscar_candidato_por_nome(nome: str):
     conn = get_conn()
     cur = conn.cursor()
@@ -172,16 +224,10 @@ def get_or_create_candidato_por_nome_localidade(
     localidade: str | None = None,
     idade: str | None = None,
 ) -> int:
-    """
-    Usado, por exemplo, pelo importador de PDFs:
-    - tenta achar candidato pelo nome exato (case-insensitive)
-    - se não existir, cria.
-    """
     existentes = buscar_candidato_por_nome(nome)
     if existentes:
         return existentes[0]["id_candidato"]
 
-    # cria novo
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(
@@ -273,6 +319,48 @@ def listar_vagas():
     return [dict(r) for r in rows]
 
 
+def obter_vaga(id_vaga: int):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT v.*, c.nome_cliente
+        FROM vagas v
+        LEFT JOIN clientes c ON c.id_cliente = v.id_cliente
+        WHERE v.id_vaga = ?
+        """,
+        (id_vaga,),
+    )
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def atualizar_vaga(
+    id_vaga: int,
+    id_cliente,
+    cargo,
+    modalidade,
+    data_abertura,
+    data_fechamento,
+    status,
+    descricao,
+):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE vagas
+        SET id_cliente = ?, cargo = ?, modalidade = ?, data_abertura = ?,
+            data_fechamento = ?, status = ?, descricao = ?
+        WHERE id_vaga = ?
+        """,
+        (id_cliente, cargo, modalidade, data_abertura, data_fechamento, status, descricao, id_vaga),
+    )
+    conn.commit()
+    conn.close()
+
+
 # =========================================================
 # VÍNCULO VAGA x CANDIDATO
 # =========================================================
@@ -292,9 +380,6 @@ def vincular_vaga_candidato(id_vaga: int, id_candidato: int, observacao: str = "
 
 
 def listar_vinculos_vaga(id_vaga: int):
-    """
-    Retorna todos os candidatos vinculados a uma vaga.
-    """
     conn = get_conn()
     cur = conn.cursor()
     cur.execute(
@@ -310,6 +395,26 @@ def listar_vinculos_vaga(id_vaga: int):
     rows = cur.fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def atualizar_vinculos_vaga(id_vaga: int, ids_candidatos: list[int]):
+    """
+    Remove vínculos antigos da vaga e recria com os IDs informados.
+    """
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM vaga_candidato WHERE id_vaga = ?;", (id_vaga,))
+    agora = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    for idc in ids_candidatos:
+        cur.execute(
+            """
+            INSERT INTO vaga_candidato (id_vaga, id_candidato, data_vinculo, observacao)
+            VALUES (?, ?, ?, ?)
+            """,
+            (id_vaga, idc, agora, ""),
+        )
+    conn.commit()
+    conn.close()
 
 
 # =========================================================
@@ -425,12 +530,120 @@ def listar_pareceres():
 
 
 # =========================================================
-# LIMPAR / RESETAR DADOS (útil depois do “susto” com CSV)
+# ACESSOS
+# =========================================================
+
+def inserir_acesso(
+    id_cliente: int | None,
+    nome_cliente: str | None,
+    id_candidato: int | None,
+    nome_usuario: str | None,
+    sistema: str | None,
+    tipo_acesso: str | None,
+    data_inicio: str | None,
+    data_fim: str | None,
+    status: str | None,
+    observacoes: str | None,
+) -> int:
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO acessos (
+            id_cliente, nome_cliente, id_candidato, nome_usuario,
+            sistema, tipo_acesso, data_inicio, data_fim, status, observacoes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            id_cliente,
+            nome_cliente,
+            id_candidato,
+            nome_usuario,
+            sistema,
+            tipo_acesso,
+            data_inicio,
+            data_fim,
+            status,
+            observacoes,
+        ),
+    )
+    conn.commit()
+    new_id = cur.lastrowid
+    conn.close()
+    return new_id
+
+
+def listar_acessos():
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT * FROM acessos
+        ORDER BY id_acesso DESC;
+        """
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+def obter_acesso(id_acesso: int):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM acessos WHERE id_acesso = ?;", (id_acesso,))
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def atualizar_acesso(
+    id_acesso: int,
+    id_cliente: int | None,
+    nome_cliente: str | None,
+    id_candidato: int | None,
+    nome_usuario: str | None,
+    sistema: str | None,
+    tipo_acesso: str | None,
+    data_inicio: str | None,
+    data_fim: str | None,
+    status: str | None,
+    observacoes: str | None,
+):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE acessos
+        SET id_cliente = ?, nome_cliente = ?, id_candidato = ?, nome_usuario = ?,
+            sistema = ?, tipo_acesso = ?, data_inicio = ?, data_fim = ?, status = ?, observacoes = ?
+        WHERE id_acesso = ?
+        """,
+        (
+            id_cliente,
+            nome_cliente,
+            id_candidato,
+            nome_usuario,
+            sistema,
+            tipo_acesso,
+            data_inicio,
+            data_fim,
+            status,
+            observacoes,
+            id_acesso,
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+
+# =========================================================
+# LIMPAR / RESETAR DADOS (se precisar zerar tudo)
 # =========================================================
 
 def limpar_dados_principais(confirmar: bool = False):
     """
-    Apaga dados de candidatos, vagas, vínculos, pareceres e status_pipeline.
+    Apaga dados de candidatos, vagas, vínculos, pareceres, clientes e status_pipeline.
     Use confirmar=True pra não apagar sem querer.
     """
     if not confirmar:
@@ -446,6 +659,7 @@ def limpar_dados_principais(confirmar: bool = False):
         DELETE FROM candidatos;
         DELETE FROM clientes;
         DELETE FROM status_pipeline;
+        DELETE FROM acessos;
         VACUUM;
         """
     )
