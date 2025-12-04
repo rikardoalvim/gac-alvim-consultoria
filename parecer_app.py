@@ -1,6 +1,6 @@
 # ================================
 # GAC - Gerenciador Alvim Consultoria
-# Aplicação principal (parecer_app.py)
+# Aplicação principal (parecer_app.py) - versão banco de dados
 # ================================
 
 import os
@@ -9,23 +9,19 @@ from typing import Optional
 
 import streamlit as st
 
-from modules.database import init_db
-
-init_db()
-
-
-# Caminhos base
+# Garante que a pasta "modules" seja encontrada
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MOD_DIR = os.path.join(BASE_DIR, "modules")
 if MOD_DIR not in sys.path:
     sys.path.append(MOD_DIR)
 
-# Autenticação
-from modules import auth
-# CSS / tema (arquivo ui_style.py dentro de modules)
+# Banco de dados
+from modules.database import init_db, autenticar
+
+# CSS global / tema
 from modules.ui_style import inject_global_css
 
-# Módulos funcionais (alguns podem não existir ainda)
+# Módulos de funcionalidade (alguns podem ainda não existir)
 try:
     from modules import dashboard
 except Exception:
@@ -67,14 +63,14 @@ except Exception:
     financeiro = None
 
 try:
-    from modules import usuarios
-except Exception:
-    usuarios = None
-
-try:
     from modules import status_pipeline
 except Exception:
     status_pipeline = None
+
+try:
+    from modules import usuarios
+except Exception:
+    usuarios = None
 
 
 # ---------------------------------------------------------
@@ -88,7 +84,53 @@ st.set_page_config(
 
 
 # ---------------------------------------------------------
-# MAPEAMENTO DOS MÓDULOS / SUBMÓDULOS
+# LOGIN SIMPLES (direto no banco)
+# ---------------------------------------------------------
+def ensure_login() -> str:
+    """
+    Login simples:
+      - Usa tabela 'usuarios' do banco
+      - Usuário seed: rikardo / 2025 (perfil MASTER)
+      - Não obriga troca de senha
+    """
+    # Já logado?
+    if st.session_state.get("logged_user"):
+        return st.session_state["logged_user"]
+
+    st.markdown("### 🔑 Login — GAC Alvim Consultoria")
+
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        username = st.text_input("Usuário", key="login_user")
+        password = st.text_input("Senha", type="password", key="login_pass")
+
+        if st.button("Entrar", key="btn_login"):
+            user = autenticar(username, password)
+            if not user:
+                st.error("Usuário ou senha inválidos.")
+            else:
+                st.session_state["logged_user"] = user.get("nome") or user.get("username") or "Usuário"
+                st.session_state["logged_username"] = user.get("username")
+                st.session_state["logged_perfil"] = user.get("perfil")
+                st.experimental_rerun()
+
+    with col2:
+        st.markdown(
+            """
+            #### Acesso padrão inicial
+            - **Usuário:** `rikardo`  
+            - **Senha:** `2025`  
+
+            Depois você poderá criar outros usuários e perfis.
+            """
+        )
+
+    st.stop()
+
+
+# ---------------------------------------------------------
+# ESTADO DE NAVEGAÇÃO
 # ---------------------------------------------------------
 SUBMODULES = {
     "dashboard": [],
@@ -100,62 +142,23 @@ SUBMODULES = {
     "rs": [
         ("candidatos", "👤 Candidatos"),
         ("vagas", "🧩 Vagas"),
-        ("pipeline", "📌 Pipeline"),
+        ("pipeline", "📊 Pipeline"),
         ("parecer", "📝 Parecer"),
     ],
-    "sistemas": [
-        ("acessos", "🔑 Acessos"),
-        ("chamados", "📨 Chamados"),
-    ],
-    "financeiro": [
-        ("financeiro", "💰 Financeiro"),
-    ],
+    "sistemas": [("acessos", "🔑 Acessos"), ("chamados", "📨 Chamados")],
+    "financeiro": [("financeiro", "💰 Financeiro")],
 }
 
 
-# ---------------------------------------------------------
-# ESTADO DE NAVEGAÇÃO
-# ---------------------------------------------------------
 def init_nav_state() -> None:
     if "main_module" not in st.session_state:
-        st.session_state["main_module"] = "rs"  # começa em R&S
+        st.session_state["main_module"] = "rs"
     if "sub_module" not in st.session_state:
         st.session_state["sub_module"] = "candidatos"
 
 
 # ---------------------------------------------------------
-# LOGIN
-# ---------------------------------------------------------
-def ensure_login() -> str:
-    """
-    Delega pro modules.auth.run() controlar o fluxo.
-    Se o usuário ainda não estiver logado, a tela de login é exibida
-    e a aplicação é interrompida aqui (st.stop).
-    Quando estiver logado, retorna o username.
-    """
-    try:
-        possible_username = auth.run()
-    except Exception as e:
-        st.error(f"Erro no módulo de autenticação: {e}")
-        st.stop()
-
-    # Se auth.run() já devolveu um usuário, beleza.
-    if possible_username:
-        return possible_username
-
-    # Se não devolveu, mas a sessão tem auth_username, usa ele.
-    username = st.session_state.get("auth_username")
-    if username:
-        return username
-
-    # Neste ponto, estamos na tela de login ou troca de senha.
-    # auth.run() já desenhou a tela, então NÃO podemos seguir renderizando o app.
-    st.stop()
-
-
-
-# ---------------------------------------------------------
-# NAV PRINCIPAL (Dashboard, Cadastros, R&S, Sistemas, Financeiro, Sair)
+# NAV PRINCIPAL (Dashboard, Cadastros, R&S, Sistemas, Financeiro + Sair)
 # ---------------------------------------------------------
 def render_main_nav() -> str:
     main = st.session_state.get("main_module", "rs")
@@ -169,7 +172,10 @@ def render_main_nav() -> str:
     ]
 
     st.markdown(
-        '<div class="main-nav-wrapper"><div class="main-nav-row">',
+        """
+        <div class="main-nav-wrapper">
+            <div class="main-nav-row">
+        """,
         unsafe_allow_html=True,
     )
 
@@ -189,10 +195,7 @@ def render_main_nav() -> str:
             if clicked:
                 st.session_state["main_module"] = key
                 subs = SUBMODULES.get(key, [])
-                if subs:
-                    st.session_state["sub_module"] = subs[0][0]
-                else:
-                    st.session_state["sub_module"] = ""
+                st.session_state["sub_module"] = subs[0][0] if subs else ""
                 main = key
 
     # Botão SAIR
@@ -202,7 +205,7 @@ def render_main_nav() -> str:
             for k in keys:
                 if k != "_is_running_with_streamlit":
                     del st.session_state[k]
-            st.rerun()
+            st.experimental_rerun()
 
     st.markdown("</div></div>", unsafe_allow_html=True)
     return main
@@ -246,7 +249,7 @@ def render_sub_nav(main_module: str) -> str:
 
 
 # ---------------------------------------------------------
-# USER BADGE (canto inferior)
+# USER BADGE
 # ---------------------------------------------------------
 def render_user_badge(username: str) -> None:
     st.markdown(
@@ -261,7 +264,7 @@ def render_user_badge(username: str) -> None:
 
 
 # ---------------------------------------------------------
-# PLACEHOLDERS / ROUTER
+# ROUTER – CHAMA OS MÓDULOS
 # ---------------------------------------------------------
 def render_dashboard(username: str) -> None:
     st.header("📊 Dashboard")
@@ -277,8 +280,19 @@ def render_dashboard(username: str) -> None:
 
 
 def render_usuarios_placeholder() -> None:
-    st.header("👥 Cadastro de Usuários (em breve)")
-    st.info("Módulo de usuários ainda não foi implementado.")
+    st.header("👥 Cadastro de Usuários")
+    if usuarios is not None and hasattr(usuarios, "run"):
+        usuarios.run()
+    else:
+        st.info("Módulo de usuários ainda não foi implementado ou está indisponível.")
+
+
+def render_status_pipeline_placeholder() -> None:
+    st.header("📌 Status do Pipeline")
+    if status_pipeline is not None and hasattr(status_pipeline, "run"):
+        status_pipeline.run()
+    else:
+        st.info("Módulo de status do pipeline ainda não foi implementado ou está indisponível.")
 
 
 def render_chamados_placeholder() -> None:
@@ -287,7 +301,6 @@ def render_chamados_placeholder() -> None:
 
 
 def route_section(main_module: str, sub_module: str, username: str) -> None:
-    # DASHBOARD
     if main_module == "dashboard":
         if dashboard is not None and hasattr(dashboard, "run"):
             dashboard.run()
@@ -295,7 +308,6 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
             render_dashboard(username)
         return
 
-    # CADASTROS
     if main_module == "cadastros":
         if sub_module in ("clientes", ""):
             if clientes is not None and hasattr(clientes, "run"):
@@ -303,18 +315,11 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
             else:
                 st.error("Módulo de clientes não encontrado.")
         elif sub_module == "usuarios":
-            if usuarios is not None and hasattr(usuarios, "run"):
-                usuarios.run()
-            else:
-                render_usuarios_placeholder()
+            render_usuarios_placeholder()
         elif sub_module == "status_pipeline":
-            if status_pipeline is not None and hasattr(status_pipeline, "run"):
-                status_pipeline.run()
-            else:
-                st.error("Módulo de status do pipeline não encontrado.")
+            render_status_pipeline_placeholder()
         return
 
-    # R&S
     if main_module == "rs":
         if sub_module in ("candidatos", ""):
             if candidatos is not None and hasattr(candidatos, "run"):
@@ -338,7 +343,6 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
                 st.error("Módulo de parecer não encontrado.")
         return
 
-    # SISTEMAS
     if main_module == "sistemas":
         if sub_module in ("acessos", ""):
             if acessos is not None and hasattr(acessos, "run"):
@@ -349,7 +353,6 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
             render_chamados_placeholder()
         return
 
-    # FINANCEIRO
     if main_module == "financeiro":
         if financeiro is not None and hasattr(financeiro, "run"):
             financeiro.run()
@@ -357,7 +360,7 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
             st.error("Módulo financeiro não encontrado.")
         return
 
-    # Fallback
+    # fallback
     render_dashboard(username)
 
 
@@ -365,23 +368,24 @@ def route_section(main_module: str, sub_module: str, username: str) -> None:
 # MAIN
 # ---------------------------------------------------------
 def main() -> None:
-    # CSS global
+    # 1) Garante que o banco exista e tenha as tabelas
+    init_db()
+
+    # 2) Aplica o CSS global (tema liquid glass)
     inject_global_css()
 
-    # Login
+    # 3) Login
     username = ensure_login()
 
-    # Estado de navegação
+    # 4) Navegação
     init_nav_state()
-
-    # Navegação
     main_module = render_main_nav()
     sub_module = render_sub_nav(main_module)
 
-    # Conteúdo
+    # 5) Conteúdo conforme seção
     route_section(main_module, sub_module, username)
 
-    # Badge de usuário
+    # 6) Badge com usuário logado
     render_user_badge(username)
 
 
