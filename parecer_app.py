@@ -9,11 +9,10 @@ from typing import Optional
 
 import streamlit as st
 
-# Garante que a pasta "modules" seja encontrada
+# Garante que a RAIZ do projeto esteja no sys.path (e não a pasta modules diretamente)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MOD_DIR = os.path.join(BASE_DIR, "modules")
-if MOD_DIR not in sys.path:
-    sys.path.append(MOD_DIR)
+if BASE_DIR not in sys.path:
+    sys.path.append(BASE_DIR)
 
 # Banco de dados
 from modules.database import init_db, autenticar
@@ -110,10 +109,12 @@ def ensure_login() -> str:
             if not user:
                 st.error("Usuário ou senha inválidos.")
             else:
-                st.session_state["logged_user"] = user.get("nome") or user.get("username") or "Usuário"
+                st.session_state["logged_user"] = (
+                    user.get("nome") or user.get("username") or "Usuário"
+                )
                 st.session_state["logged_username"] = user.get("username")
                 st.session_state["logged_perfil"] = user.get("perfil")
-                st.rerun()   # ⬅⬅ AQUI, em vez de st.experimental_rerun()
+                st.rerun()  # <-- versão nova do Streamlit
 
     with col2:
         st.markdown(
@@ -127,7 +128,6 @@ def ensure_login() -> str:
         )
 
     st.stop()
-
 
 
 # ---------------------------------------------------------
@@ -184,7 +184,7 @@ def render_main_nav() -> str:
 
     # Botões principais
     for idx, (key, label) in enumerate(items):
-        active = (key == main)
+        active = key == main
         btn_key = f"main_{key}"
         with cols[idx]:
             st.markdown(
@@ -206,7 +206,7 @@ def render_main_nav() -> str:
             for k in keys:
                 if k != "_is_running_with_streamlit":
                     del st.session_state[k]
-            st.experimental_rerun()
+            st.rerun()
 
     st.markdown("</div></div>", unsafe_allow_html=True)
     return main
@@ -230,7 +230,7 @@ def render_sub_nav(main_module: str) -> str:
 
         for i, (sid, label) in enumerate(subs):
             with cols[i]:
-                active = (sid == cur_sub)
+                active = sid == cur_sub
                 btn_key = f"sub_{main_module}_{sid}"
                 st.markdown(
                     f'<div class="stButton{" nav-active" if active else ""}>',
