@@ -128,25 +128,30 @@ def init_nav_state() -> None:
 # ---------------------------------------------------------
 def ensure_login() -> str:
     """
-    Delegamos a tela de login para modules.auth.run().
-    Se ele quiser segurar na tela de login, usa st.stop() lá.
-    Aqui só recuperamos o usuário logado.
+    Delega pro modules.auth.run() controlar o fluxo.
+    Se o usuário ainda não estiver logado, a tela de login é exibida
+    e a aplicação é interrompida aqui (st.stop).
+    Quando estiver logado, retorna o username.
     """
     try:
-        possible_username: Optional[str] = auth.run()
+        possible_username = auth.run()
     except Exception as e:
         st.error(f"Erro no módulo de autenticação: {e}")
         st.stop()
 
-    username = (
-        possible_username
-        or st.session_state.get("auth_username")
-        or st.session_state.get("usuario_logado")
-        or st.session_state.get("usuario")
-        or st.session_state.get("user")
-        or "Usuário"
-    )
-    return username
+    # Se auth.run() já devolveu um usuário, beleza.
+    if possible_username:
+        return possible_username
+
+    # Se não devolveu, mas a sessão tem auth_username, usa ele.
+    username = st.session_state.get("auth_username")
+    if username:
+        return username
+
+    # Neste ponto, estamos na tela de login ou troca de senha.
+    # auth.run() já desenhou a tela, então NÃO podemos seguir renderizando o app.
+    st.stop()
+
 
 
 # ---------------------------------------------------------

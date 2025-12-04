@@ -10,8 +10,6 @@ MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.abspath(os.path.join(MODULE_DIR, ".."))
 USERS_FILE = os.path.join(ROOT_DIR, "usuarios.csv")
 
-REQUIRED_COLS = ["username", "nome", "senha_hash", "must_change", "perfil", "ativo"]
-
 
 # -----------------------------
 # Utilitários de senha / arquivo
@@ -41,75 +39,43 @@ def _create_default_users_df() -> pd.DataFrame:
             "ativo": 1,
         },
     ]
-    return pd.DataFrame(data, columns=REQUIRED_COLS)
-
-
-def _save_df(df: pd.DataFrame) -> None:
-    """Grava o DataFrame de usuários no CSV com ; como separador."""
-    df.to_csv(USERS_FILE, sep=";", index=False, encoding="utf-8")
-
-
-def _recreate_users_file_with_defaults(msg: Optional[str] = None) -> pd.DataFrame:
-    """Recria o arquivo de usuários com os padrões."""
-    df = _create_default_users_df()
-    _save_df(df)
-    if msg:
-        st.warning(msg)
-    return df
+    return pd.DataFrame(data)
 
 
 def load_users() -> pd.DataFrame:
-    """
-    Carrega usuários do CSV.
-    - Se não existir, cria com usuários padrão.
-    - Se estiver corrompido ou sem colunas obrigatórias, recria com padrão.
-    """
+    """Carrega usuários do CSV; se não existir, cria com usuários padrão."""
     if not os.path.exists(USERS_FILE):
         df = _create_default_users_df()
-        _save_df(df)
+        df.to_csv(USERS_FILE, index=False, encoding="utf-8")
         return df
 
-    try:
-        df = pd.read_csv(USERS_FILE, sep=";", dtype=str)
-    except Exception:
-        return _recreate_users_file_with_defaults(
-            "Arquivo de usuários estava inválido. Foi recriado com usuários padrão."
-        )
+    df = pd.read_csv(USERS_FILE, dtype=str)
 
-    # Garante colunas obrigatórias
-    missing = [c for c in REQUIRED_COLS if c not in df.columns]
-    if missing:
-        return _recreate_users_file_with_defaults(
-            "Estrutura de usuários inconsistente. Arquivo recriado com usuários padrão."
-        )
+    # Normaliza colunas
+    if "must_change" in df.columns:
+        df["must_change"] = df["must_change"].fillna("0").astype(int)
+    else:
+        df["must_change"] = 0
 
-    # Normaliza tipos
-    df["must_change"] = df["must_change"].fillna("0").astype(int)
-    df["ativo"] = df["ativo"].fillna("1").astype(int)
-    df["perfil"] = df["perfil"].fillna("OPERACOES_GERAL").astype(str)
+    if "ativo" in df.columns:
+        df["ativo"] = df["ativo"].fillna("1").astype(int)
+    else:
+        df["ativo"] = 1
+
+    if "perfil" not in df.columns:
+        df["perfil"] = "OPERACOES_GERAL"
 
     df["username"] = df["username"].astype(str)
-    df["nome"] = df["nome"].astype(str)
+    df["nome"] = df.get("nome", "").astype(str)
     df["senha_hash"] = df["senha_hash"].astype(str)
+    df["perfil"] = df["perfil"].astype(str)
 
     return df
 
 
 def save_users(df: pd.DataFrame) -> None:
     """Grava o DataFrame de usuários no CSV."""
-    # Garante ordem das colunas
-    for col in REQUIRED_COLS:
-        if col not in df.columns:
-            if col == "must_change":
-                df[col] = 0
-            elif col == "ativo":
-                df[col] = 1
-            elif col == "perfil":
-                df[col] = "OPERACOES_GERAL"
-            else:
-                df[col] = ""
-    df = df[REQUIRED_COLS]
-    _save_df(df)
+    df.to_csv(USERS_FILE, index=False, encoding="utf-8")
 
 
 # -----------------------------
@@ -128,15 +94,20 @@ def _render_change_password(username: str, df: pd.DataFrame) -> None:
         elif new1 != new2:
             st.error("As senhas não coincidem.")
         else:
+            # Atualiza senha e marca que NÃO precisa mais trocar
             df.loc[df["username"] == username, "senha_hash"] = hash_password(new1)
             df.loc[df["username"] == username, "must_change"] = 0
             save_users(df)
+
             st.success("Senha alterada com sucesso! Faça login novamente.")
+
             # Limpa sessão de auth e volta pra tela de login
             for k in ["auth_username", "auth_role", "auth_need_change"]:
                 st.session_state.pop(k, None)
+
             st.rerun()
 
+    # IMPORTANTÍSSIMO: não deixa o resto da app renderizar
     st.stop()
 
 
@@ -166,7 +137,7 @@ def _render_login(df: pd.DataFrame) -> None:
                 else:
                     st.session_state["auth_username"] = row["username"]
                     st.session_state["auth_role"] = row.get("perfil", "OPERACOES_GERAL")
-                    st.session_state["auth_need_change"] = bool(int(row.get("must_change", 0)))
+                    st.session_state["auth_need_change"] = bool(row.get("must_change", 0))
                     st.rerun()
 
     with col2:
@@ -179,6 +150,9 @@ def _render_login(df: pd.DataFrame) -> None:
             No primeiro acesso, será solicitado que a senha seja redefinida.
             """
         )
+
+    # Aqui NÃO damos st.stop(), porque quem chama (parecer_app.ensure_login)
+    # vai decidir se continua ou não.
 
 
 # -----------------------------
@@ -217,7 +191,3 @@ def run() -> Optional[str]:
     # Caso não haja usuário na sessão, mostra login
     _render_login(df)
     return None
-
-
-
-
