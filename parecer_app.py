@@ -113,7 +113,7 @@ def ensure_login() -> str:
                 st.session_state["logged_user"] = user.get("nome") or user.get("username") or "Usuário"
                 st.session_state["logged_username"] = user.get("username")
                 st.session_state["logged_perfil"] = user.get("perfil")
-                st.experimental_rerun()
+                st.rerun()   # ⬅⬅ AQUI, em vez de st.experimental_rerun()
 
     with col2:
         st.markdown(
@@ -127,6 +127,7 @@ def ensure_login() -> str:
         )
 
     st.stop()
+
 
 
 # ---------------------------------------------------------
